@@ -1,0 +1,55 @@
+import React from 'react'
+import { Routes, Route, useNavigate, Navigate } from 'react-router-dom'
+import './App.css'
+import LandingPage from './components/LandingPage'
+import CreateAccount from './components/CreateAccount'
+import SignIn from './components/SignIn'
+import Profile from './components/Profile'
+import HomePage from './components/HomePage'
+import UserProfile from './components/UserProfile'
+import SearchResults from './components/SearchResults'
+import MovieDetails from './components/MovieDetails'
+import MovieCredits from './components/MovieCredits'
+import OAuthCallback from './components/OAuthCallback'
+import { AuthProvider, useAuth } from './context/AuthContext'
+
+function AppContent() {
+  const navigate = useNavigate();
+  const { user } = useAuth();
+
+  const handleNavigate = (target) => {
+    switch (target) {
+      case 'landing': navigate('/'); break;
+      case 'create-account': navigate('/signup'); break;
+      case 'sign-in': navigate('/signin'); break;
+      case 'profile': navigate('/profile'); break;
+      case 'home': navigate('/home'); break;
+      default: navigate('/');
+    }
+  };
+
+  return (
+    <Routes>
+      <Route path="/" element={user ? <Navigate to="/home" replace /> : <LandingPage onNavigate={handleNavigate} user={user} />} />
+      <Route path="/signup" element={<CreateAccount onNavigate={handleNavigate} />} />
+      <Route path="/signin" element={<SignIn onNavigate={handleNavigate} />} />
+      <Route path="/profile" element={<Profile user={user} onNavigate={handleNavigate} />} />
+      <Route path="/home" element={<HomePage onNavigate={handleNavigate} user={user} />} />
+      <Route path="/user/:id" element={<UserProfile />} />
+      <Route path="/movie/:id" element={<MovieDetails />} />
+      <Route path="/movie/:id/credits" element={<MovieCredits />} />
+      <Route path="/search" element={<SearchResults />} />
+      <Route path="/oauth/callback" element={<OAuthCallback />} />
+    </Routes>
+  );
+}
+
+function App() {
+  return (
+    <AuthProvider>
+      <AppContent />
+    </AuthProvider>
+  )
+}
+
+export default App

@@ -1,0 +1,148 @@
+.credits-page-container {
+  min-height: 100vh;
+  width: 100%;
+  color: #e5e7eb;
+  display: flex;
+  flex-direction: column;
+}
+
+.credits-content-wrapper {
+  flex: 1;
+  padding: 40px 60px;
+  max-width: 1400px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.credits-header {
+  margin-bottom: 30px;
+}
+
+.back-btn {
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  font-size: 1rem;
+  cursor: pointer;
+  margin-bottom: 15px;
+  padding: 0;
+  transition: color 0.3s;
+}
+
+.back-btn:hover {
+  color: #00e054;
+}
+
+.credits-header h1 {
+  font-size: 2.5rem;
+  font-weight: 800;
+  color: #fff;
+  margin: 0;
+}
+
+.subtitle {
+  font-weight: 300;
+  color: #94a3b8;
+  font-size: 1.8rem;
+  margin-left: 10px;
+}
+
+/* Tabs */
+.credits-tabs {
+  display: flex;
+  gap: 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  margin-bottom: 30px;
+}
+
+.credits-tab-btn {
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  font-size: 1.1rem;
+  font-weight: 600;
+  padding: 10px 0;
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  position: relative;
+  transition: color 0.3s;
+}
+
+.credits-tab-btn:hover {
+  color: #fff;
+}
+
+.credits-tab-btn.active {
+  color: #00e054;
+}
+
+.credits-tab-btn.active::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background: #00e054;
+}
+
+/* Grid */
+.credits-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 20px;
+}
+
+.credit-card {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+  overflow: hidden;
+  transition: transform 0.2s;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.credit-card:hover {
+  transform: translateY(-5px);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.credit-image-container {
+  width: 100%;
+  height: 180px;
+  background: #222;
+}
+
+.credit-image-container img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.credit-info {
+  padding: 10px;
+}
+
+.credit-name {
+  display: block;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #fff;
+  margin-bottom: 4px;
+}
+
+.credit-role {
+  display: block;
+  font-size: 0.8rem;
+  color: #94a3b8;
+}
+
+.no-image {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  color: #666;
+  font-size: 0.8rem;
+}
