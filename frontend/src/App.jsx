@@ -13,6 +13,8 @@ import MovieCredits from './components/MovieCredits'
 import OAuthCallback from './components/OAuthCallback'
 import { AuthProvider, useAuth } from './context/AuthContext'
 
+import { ProfileOverview, ProfileFilms, ProfileDiary, ProfileReviews, ProfileWatchlist, ProfileLists, ProfileLikes } from './components/ProfileTabs'
+
 function AppContent() {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -33,7 +35,15 @@ function AppContent() {
       <Route path="/" element={user ? <Navigate to="/home" replace /> : <LandingPage onNavigate={handleNavigate} user={user} />} />
       <Route path="/signup" element={<CreateAccount onNavigate={handleNavigate} />} />
       <Route path="/signin" element={<SignIn onNavigate={handleNavigate} />} />
-      <Route path="/profile" element={<Profile user={user} onNavigate={handleNavigate} />} />
+      <Route path="/profile" element={<Profile user={user} onNavigate={handleNavigate} />}>
+        <Route index element={<ProfileOverview />} />
+        <Route path="films" element={<ProfileFilms />} />
+        <Route path="diary" element={<ProfileDiary />} />
+        <Route path="reviews" element={<ProfileReviews />} />
+        <Route path="watchlist" element={<ProfileWatchlist />} />
+        <Route path="lists" element={<ProfileLists />} />
+        <Route path="likes" element={<ProfileLikes />} />
+      </Route>
       <Route path="/home" element={<HomePage onNavigate={handleNavigate} user={user} />} />
       <Route path="/user/:id" element={<UserProfile />} />
       <Route path="/movie/:id" element={<MovieDetails />} />

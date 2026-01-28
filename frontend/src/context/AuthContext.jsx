@@ -6,7 +6,10 @@ const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
-  const [token, setToken] = useState(localStorage.getItem('token'));
+  const [token, setToken] = useState(() => {
+    const stored = localStorage.getItem('token');
+    return (stored && stored !== 'null' && stored !== 'undefined') ? stored : null;
+  });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -47,6 +50,11 @@ export const AuthProvider = ({ children }) => {
   }, [token]);
 
   const login = (newToken) => {
+    if (!newToken || newToken === 'null' || newToken === 'undefined') {
+        localStorage.removeItem('token');
+        setToken(null);
+        return;
+    }
     localStorage.setItem('token', newToken);
     setToken(newToken);
   };

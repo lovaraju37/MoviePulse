@@ -1,4 +1,5 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
+
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import SockJS from 'sockjs-client';
@@ -6,29 +7,250 @@ import Stomp from 'stompjs';
 import "./LandingPage.css";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+const API_BASE_FALLBACK = API_BASE_URL || 'http://localhost:8080';
+
+const SearchBar = ({ navigate, token, initialQuery, initialIsOpen }) => {
+    const [searchQuery, setSearchQuery] = useState(initialQuery);
+    const [searchResults, setSearchResults] = useState([]);
+    const [showSearchResults, setShowSearchResults] = useState(false);
+    const [isSearchOpen, setIsSearchOpen] = useState(initialIsOpen);
+    const [isFocused, setIsFocused] = useState(false);
+    const searchRef = useRef(null);
+
+    useEffect(() => {
+        const fetchSuggestions = async () => {
+            if (!isFocused) {
+                setShowSearchResults(false);
+                return;
+            }
+            if (searchQuery.length > 0) {
+                try {
+                    const response = await fetch(
+                        `${API_BASE_FALLBACK}/api/movies/search?query=${encodeURIComponent(searchQuery)}`
+                    );
+                    if (response.ok) {
+                        const data = await response.json();
+                        const rawResults = Array.isArray(data) ? data : (data && data.results) ? data.results : [];
+                        const filtered = rawResults
+                            .filter(m => (m.poster_path || m.posterUrl) && (m.vote_count || 0) >= 20)
+                            .sort((a, b) => (b.popularity || 0) - (a.popularity || 0));
+                        const mapped = filtered.slice(0, 7).map(m => {
+                            const year = m.release_date ? new Date(m.release_date).getFullYear() : '';
+                            const rating5 = ((m.vote_average || 0) / 2).toFixed(1);
+                            return {
+                                id: m.id,
+                                title: m.title || m.name || '',
+                                posterUrl: m.posterUrl || (m.poster_path ? `https://image.tmdb.org/t/p/w92${m.poster_path}` : null),
+                                year,
+                                rating5
+                            };
+                        });
+                        setSearchResults(mapped);
+                        setShowSearchResults(mapped.length > 0);
+                    }
+                } catch (err) {
+                    console.error("Search failed", err);
+                }
+            } else {
+                setSearchResults([]);
+                setShowSearchResults(false);
+            }
+        };
+
+        const timeoutId = setTimeout(() => {
+            fetchSuggestions();
+        }, 300);
+
+        return () => clearTimeout(timeoutId);
+    }, [searchQuery, token, isFocused]);
+
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (searchRef.current && !searchRef.current.contains(event.target)) {
+                setShowSearchResults(false);
+                setIsFocused(false);
+            }
+        };
+
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+        };
+    }, []);
+
+    const handleInputChange = (e) => {
+        setSearchQuery(e.target.value);
+    };
+
+    const executeSearch = () => {
+        if (searchQuery.trim()) {
+            navigate(`/search?query=${encodeURIComponent(searchQuery)}`);
+            setShowSearchResults(false);
+            setIsFocused(false);
+        }
+    };
+
+    const handleKeyDown = (e) => {
+        if (e.key === 'Enter') {
+            executeSearch();
+        }
+    };
+
+    const handleSuggestionClick = (movieId) => {
+        navigate(`/movie/${movieId}`);
+        setShowSearchResults(false);
+        setIsFocused(false);
+    };
+
+    return (
+        <div className="search-container" ref={searchRef} style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+            {!isSearchOpen ? (
+                <button
+                    onClick={() => setIsSearchOpen(true)}
+                    style={{
+                        background: 'transparent',
+                        border: 'none',
+                        color: 'white',
+                        cursor: 'pointer',
+                        padding: '8px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center'
+                    }}
+                >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16">
+                        <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z" />
+                    </svg>
+                </button>
+            ) : (
+                <div style={{ display: 'flex', alignItems: 'center' }}>
+                    <button
+                        onClick={() => {
+                            setIsSearchOpen(false);
+                            setSearchQuery('');
+                            setShowSearchResults(false);
+                        }}
+                        style={{
+                            background: 'transparent',
+                            border: 'none',
+                            color: '#ccc',
+                            cursor: 'pointer',
+                            padding: '8px',
+                            marginRight: '8px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            fontSize: '1.2rem'
+                        }}
+                        title="Close search"
+                    >
+                        ✕
+                    </button>
+                    <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        backgroundColor: 'white',
+                        borderRadius: '20px',
+                        padding: '5px 15px',
+                        width: '250px',
+                        transition: 'width 0.3s ease'
+                    }}>
+                        <input
+                            type="text"
+                            placeholder="Search..."
+                            value={searchQuery}
+                            onChange={handleInputChange}
+                            onKeyDown={handleKeyDown}
+                            onFocus={() => setIsFocused(true)}
+                            autoFocus
+                            style={{
+                                border: 'none',
+                                outline: 'none',
+                                backgroundColor: 'transparent',
+                                color: '#333',
+                                width: '100%',
+                                fontSize: '14px'
+                            }}
+                        />
+                        <button
+                            onClick={executeSearch}
+                            style={{
+                                background: 'transparent',
+                                border: 'none',
+                                color: '#666',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                padding: 0,
+                                marginLeft: '5px'
+                            }}
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                                <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z" />
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            )}
+            {showSearchResults && searchResults.length > 0 && (
+                <div style={{
+                    position: 'absolute',
+                    top: '100%',
+                    right: 0,
+                    width: '250px',
+                    backgroundColor: '#1a1a1a',
+                    border: '1px solid #333',
+                    borderRadius: '4px',
+                    zIndex: 1000,
+                    maxHeight: '300px',
+                    overflowY: 'auto',
+                    boxShadow: '0 4px 6px rgba(0,0,0,0.3)',
+                    marginTop: '10px'
+                }}>
+                    {searchResults.map(result => (
+                        <div
+                            key={result.id}
+                            onClick={() => handleSuggestionClick(result.id)}
+                            style={{
+                                padding: '10px',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                borderBottom: '1px solid #333'
+                            }}
+                        >
+                            <img
+                                src={result.posterUrl || "https://via.placeholder.com/30"}
+                                alt={result.title}
+                                style={{ width: '30px', height: '45px', objectFit: 'cover', marginRight: '10px' }}
+                            />
+                            <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                <span style={{ color: '#fff' }}>{result.title}</span>
+                                <span style={{ color: '#94a3b8', fontSize: '0.8rem' }}>
+                                    {result.year ? result.year : ''}{result.year && ' • '}Rating {result.rating5}/5
+                                </span>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+};
 
 const Navbar = () => {
     const { user, logout, token } = useAuth();
     const navigate = useNavigate();
     const location = useLocation();
     const [showDropdown, setShowDropdown] = useState(false);
-    const [searchQuery, setSearchQuery] = useState('');
-    const [searchResults, setSearchResults] = useState([]);
-    const [showSearchResults, setShowSearchResults] = useState(false);
-    const [isSearchOpen, setIsSearchOpen] = useState(false);
     const dropdownRef = useRef(null);
-    const searchRef = useRef(null);
     const timeoutRef = useRef(null);
 
-    // Initialize search state from URL
-    useEffect(() => {
+    const queryFromUrl = useMemo(() => {
         const params = new URLSearchParams(location.search);
-        const query = params.get('query');
-        if (query) {
-            setSearchQuery(query);
-            setIsSearchOpen(true);
-        }
+        return params.get('query') || '';
     }, [location.search]);
+
+    const searchBarKey = useMemo(() => `search-${location.search || 'root'}`, [location.search]);
 
     // Notifications state
     const [notifications, setNotifications] = useState([]);
@@ -98,14 +320,11 @@ const Navbar = () => {
         };
     }, [token, user]);
 
-    // Close dropdown when clicking outside
+    // Close dropdown/notifications when clicking outside
     useEffect(() => {
         const handleClickOutside = (event) => {
             if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
                 setShowDropdown(false);
-            }
-            if (searchRef.current && !searchRef.current.contains(event.target)) {
-                setShowSearchResults(false);
             }
             if (notifRef.current && !notifRef.current.contains(event.target)) {
                 setShowNotifications(false);
@@ -132,11 +351,11 @@ const Navbar = () => {
 
     const handleNotificationClick = (e, notif) => {
         e.stopPropagation();
-        
+
         if (!notif.isRead) {
             markAsRead(notif.id);
         }
-        
+
         if (notif.senderId) {
             if (user && String(user.id) === String(notif.senderId)) {
                 navigate('/profile');
@@ -145,57 +364,6 @@ const Navbar = () => {
             }
             setShowNotifications(false);
         }
-    };
-
-    const handleInputChange = (e) => {
-        setSearchQuery(e.target.value);
-    };
-
-    const executeSearch = () => {
-        if (searchQuery.trim()) {
-            navigate(`/search?query=${encodeURIComponent(searchQuery)}`);
-            setShowSearchResults(false);
-        }
-    };
-
-    useEffect(() => {
-        const fetchSuggestions = async () => {
-            if (searchQuery.length > 0) {
-                try {
-                    const response = await fetch(`${API_BASE_URL}/api/movies/search?query=${searchQuery}`, {
-                        headers: { 'Authorization': `Bearer ${token}` }
-                    });
-                    if (response.ok) {
-                        const data = await response.json();
-                        setSearchResults(data);
-                        setShowSearchResults(true);
-                    }
-                } catch (err) {
-                    console.error("Search failed", err);
-                }
-            } else {
-                setSearchResults([]);
-                setShowSearchResults(false);
-            }
-        };
-
-        const timeoutId = setTimeout(() => {
-            fetchSuggestions();
-        }, 300);
-
-        return () => clearTimeout(timeoutId);
-    }, [searchQuery, token]);
-
-    const handleKeyDown = (e) => {
-        if (e.key === 'Enter') {
-            executeSearch();
-        }
-    };
-
-    const handleSuggestionClick = (movieTitle) => {
-        setSearchQuery(movieTitle);
-        navigate(`/search?query=${encodeURIComponent(movieTitle)}`);
-        setShowSearchResults(false);
     };
 
     const handleMouseEnter = () => {
@@ -249,9 +417,12 @@ const Navbar = () => {
                                 <div className="dropdown-menu">
                                     <div className="dropdown-item" onClick={() => navigate('/home')}>Home</div>
                                     <div className="dropdown-item" onClick={() => navigate('/profile')}>Profile</div>
-                                    <div className="dropdown-item">Watchlist</div>
-                                    <div className="dropdown-item">Reviews</div>
-                                    <div className="dropdown-item">Lists</div>
+                                    <div className="dropdown-item" onClick={() => navigate('/profile/films')}>Films</div>
+                                    <div className="dropdown-item" onClick={() => navigate('/profile/diary')}>Diary</div>
+                                    <div className="dropdown-item" onClick={() => navigate('/profile/reviews')}>Reviews</div>
+                                    <div className="dropdown-item" onClick={() => navigate('/profile/watchlist')}>Watchlist</div>
+                                    <div className="dropdown-item" onClick={() => navigate('/profile/lists')}>Lists</div>
+                                    <div className="dropdown-item" onClick={() => navigate('/profile/likes')}>Likes</div>
                                     <div className="dropdown-divider"></div>
                                     <div className="dropdown-item logout" onClick={handleLogout}>Logout</div>
                                 </div>
@@ -328,131 +499,13 @@ const Navbar = () => {
                     </div>
                 )}
 
-                <div className="search-container" ref={searchRef} style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-                    {!isSearchOpen ? (
-                        <button
-                            onClick={() => setIsSearchOpen(true)}
-                            style={{
-                                background: 'transparent',
-                                border: 'none',
-                                color: 'white',
-                                cursor: 'pointer',
-                                padding: '8px',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center'
-                            }}
-                        >
-                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16">
-                                <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z" />
-                            </svg>
-                        </button>
-                    ) : (
-                        <div style={{ display: 'flex', alignItems: 'center' }}>
-                            <button
-                                onClick={() => {
-                                    setIsSearchOpen(false);
-                                    setSearchQuery('');
-                                    setShowSearchResults(false);
-                                }}
-                                style={{
-                                    background: 'transparent',
-                                    border: 'none',
-                                    color: '#ccc',
-                                    cursor: 'pointer',
-                                    padding: '8px',
-                                    marginRight: '8px',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    fontSize: '1.2rem'
-                                }}
-                                title="Close search"
-                            >
-                                ✕
-                            </button>
-                            <div style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                backgroundColor: 'white',
-                                borderRadius: '20px',
-                                padding: '5px 15px',
-                                width: '250px',
-                                transition: 'width 0.3s ease'
-                            }}>
-                                <input
-                                    type="text"
-                                    placeholder="Search..."
-                                    value={searchQuery}
-                                    onChange={handleInputChange}
-                                    onKeyDown={handleKeyDown}
-                                    autoFocus
-                                    style={{
-                                        border: 'none',
-                                        outline: 'none',
-                                        backgroundColor: 'transparent',
-                                        color: '#333',
-                                        width: '100%',
-                                        fontSize: '14px'
-                                    }}
-                                />
-                                <button
-                                    onClick={executeSearch}
-                                    style={{
-                                        background: 'transparent',
-                                        border: 'none',
-                                        color: '#666',
-                                        cursor: 'pointer',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        padding: 0,
-                                        marginLeft: '5px'
-                                    }}
-                                >
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
-                                        <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z" />
-                                    </svg>
-                                </button>
-                            </div>
-                        </div>
-                    )}
-                    {showSearchResults && searchResults.length > 0 && (
-                        <div style={{
-                            position: 'absolute',
-                            top: '100%',
-                            right: 0,
-                            width: '250px',
-                            backgroundColor: '#1a1a1a',
-                            border: '1px solid #333',
-                            borderRadius: '4px',
-                            zIndex: 1000,
-                            maxHeight: '300px',
-                            overflowY: 'auto',
-                            boxShadow: '0 4px 6px rgba(0,0,0,0.3)',
-                            marginTop: '10px'
-                        }}>
-                            {searchResults.map(result => (
-                                <div
-                                    key={result.id}
-                                    onClick={() => handleSuggestionClick(result.title)}
-                                    style={{
-                                        padding: '10px',
-                                        cursor: 'pointer',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        borderBottom: '1px solid #333'
-                                    }}
-                                >
-                                    <img
-                                        src={result.posterUrl || "https://via.placeholder.com/30"}
-                                        alt={result.title}
-                                        style={{ width: '30px', height: '45px', objectFit: 'cover', marginRight: '10px' }}
-                                    />
-                                    <span>{result.title}</span>
-                                </div>
-                            ))}
-                        </div>
-                    )}
-                </div>
+                <SearchBar
+                    key={searchBarKey}
+                    navigate={navigate}
+                    token={token}
+                    initialQuery={queryFromUrl}
+                    initialIsOpen={Boolean(queryFromUrl)}
+                />
             </div>
         </nav>
     );

@@ -51,4 +51,34 @@ public class TmdbService {
             return null;
         }
     }
+
+    public Map<String, Object> searchMovies(String query, int page) {
+        String url = UriComponentsBuilder.fromUriString(apiUrl + "/search/movie")
+                .queryParam("api_key", apiKey)
+                .queryParam("query", query)
+                .queryParam("page", page)
+                .toUriString();
+
+        try {
+            return restTemplate.getForObject(url, Map.class);
+        } catch (Exception e) {
+            System.err.println("Error searching movies from TMDB: " + e.getMessage());
+            return null;
+        }
+    }
+
+    public Map<String, Object> searchPeople(String query, int page) {
+        String url = UriComponentsBuilder.fromUriString(apiUrl + "/search/person")
+                .queryParam("api_key", apiKey)
+                .queryParam("query", query)
+                .queryParam("page", page)
+                .toUriString();
+
+        try {
+            return restTemplate.getForObject(url, Map.class);
+        } catch (Exception e) {
+            System.err.println("Error searching people from TMDB: " + e.getMessage());
+            return null;
+        }
+    }
 }

@@ -1,8 +1,8 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
 import { Apple, Smartphone, Eye, Heart, MessageSquare, Star, Calendar, List } from 'lucide-react';
 import "./LandingPage.css";
+import Navbar from './Navbar';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 const IMAGE_BASE_URL = 'https://image.tmdb.org/t/p/w500';
@@ -17,12 +17,8 @@ const FALLBACK_MOVIES = [
   { id: 6, title: "Avengers: Endgame", poster_path: "https://image.tmdb.org/t/p/w500/or06FN3Dka5tukK1e9sl16pB3iy.jpg" },
 ];
 
-const LandingPage = ({ onNavigate, user }) => {
-  const { logout } = useAuth();
+const LandingPage = ({ onNavigate }) => {
   const navigate = useNavigate();
-  const [showDropdown, setShowDropdown] = useState(false);
-  const dropdownRef = useRef(null);
-  const timeoutRef = useRef(null);
   const [trendingMovies, setTrendingMovies] = useState([]);
   const [loading, setLoading] = useState(true);
   const [heroBackdrop, setHeroBackdrop] = useState('');
@@ -33,19 +29,6 @@ const LandingPage = ({ onNavigate, user }) => {
     if (path.startsWith('http')) return path;
     return `${IMAGE_BASE_URL}${path}`;
   };
-
-  // Close dropdown when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
-        setShowDropdown(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, []);
 
   useEffect(() => {
     const fetchTrendingMovies = async () => {
@@ -81,29 +64,10 @@ const LandingPage = ({ onNavigate, user }) => {
     fetchTrendingMovies();
   }, []);
 
-  const handleMouseEnter = () => {
-    if (timeoutRef.current) {
-      clearTimeout(timeoutRef.current);
-    }
-    setShowDropdown(true);
-  };
-
-  const handleMouseLeave = () => {
-    timeoutRef.current = setTimeout(() => {
-      setShowDropdown(false);
-    }, 300); // 300ms delay before closing
-  };
-
   const handleNavigate = (target) => {
     if (onNavigate) {
       onNavigate(target)
-      setShowDropdown(false);
     }
-  }
-
-  const handleLogout = () => {
-    logout();
-    setShowDropdown(false);
   }
 
   const getHeroStyle = () => {
@@ -132,73 +96,8 @@ const LandingPage = ({ onNavigate, user }) => {
           )}
         </div>
       )}
-      {/* Navbar */}
-      <nav className="navbar">
-        <div className="nav-left">
-          <div className="logo" onClick={() => handleNavigate(user ? 'home' : 'landing')} style={{cursor: 'pointer'}}>MoviePulse</div>
-          <div className="nav-links">
-            <button className="nav-link" type="button">
-              Films
-            </button>
-            <button className="nav-link" type="button">
-              Lists
-            </button>
-          </div>
-        </div>
-
-        <div className="nav-right">
-          {!user ? (
-            <div className="auth-buttons">
-              <button className="nav-link" type="button" onClick={() => handleNavigate('sign-in')}>
-                Sign In
-              </button>
-              <button className="nav-link" type="button" onClick={() => handleNavigate('create-account')}>
-                Create Account
-              </button>
-            </div>
-          ) : (
-            <div className="user-section">
-               <div 
-                 className="user-menu-container" 
-                 ref={dropdownRef}
-                 onMouseEnter={handleMouseEnter}
-                 onMouseLeave={handleMouseLeave}
-               >
-                <div className="user-trigger">
-                  <img 
-                    src={user.picture || "https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp&f=y"} 
-                    alt="User" 
-                    className="user-avatar" 
-                  />
-                  <span className="user-name">{user.name || "User"}</span>
-                  <span className="dropdown-caret">▼</span>
-                </div>
-                
-                {showDropdown && (
-                  <div className="dropdown-menu">
-                    <div className="dropdown-item" onClick={() => handleNavigate('home')}>Home</div>
-                    <div className="dropdown-item" onClick={() => handleNavigate('profile')}>Profile</div>
-                    <div className="dropdown-item">Watchlist</div>
-                    <div className="dropdown-item">Reviews</div>
-                    <div className="dropdown-item">Lists</div>
-                    <div className="dropdown-divider"></div>
-                    <div className="dropdown-item logout" onClick={handleLogout}>Logout</div>
-                  </div>
-                )}
-              </div>
-
-              <div className="notification-bell">
-                <span className="bell-icon">🔔</span>
-                <span className="badge">38</span>
-              </div>
-            </div>
-          )}
-
-          <div className="search-box">
-            <input type="text" placeholder="Search" />
-          </div>
-        </div>
-      </nav>
+      {/* Shared Navbar (includes unified search box) */}
+      <Navbar />
 
       {/* Main Section */}
       <main className="main-layout">

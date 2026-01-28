@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+
 import './CreateAccount.css';
 import './Profile.css';
 import './LandingPage.css';
@@ -6,13 +7,15 @@ import { useAuth } from '../context/AuthContext';
 import Navbar from './Navbar';
 import SockJS from 'sockjs-client';
 import Stomp from 'stompjs';
+import { Outlet, NavLink } from 'react-router-dom';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 const Profile = ({ onNavigate }) => {
-  const { user, updateUser, token, logout } = useAuth();
+  const { user, updateUser, token } = useAuth();
+  const userId = user?.id;
+
   const [isEditing, setIsEditing] = useState(false);
-  // Removed local navbar state as we use the Navbar component
   const [formData, setFormData] = useState({
     name: '',
     bio: '',
@@ -41,14 +44,16 @@ const Profile = ({ onNavigate }) => {
       });
       fetchUserStats();
     }
-  }, [user]);
+  }, [user, fetchUserStats]);
 
-  const fetchUserStats = async () => {
-    if (!user || !user.id) return;
+  const fetchUserStats = useCallback(async () => {
+    if (!userId) return;
+
     try {
-      const response = await fetch(`${API_BASE_URL}/api/users/${user.id}`, {
+      const response = await fetch(`${API_BASE_URL}/api/users/${userId}`, {
           headers: { 'Authorization': `Bearer ${token}` }
       });
+
       if (response.ok) {
           const data = await response.json();
           setUserStats(prev => ({
@@ -63,7 +68,7 @@ const Profile = ({ onNavigate }) => {
     } catch (err) {
       console.error("Failed to fetch user stats", err);
     }
-  };
+  }, [token, userId]);
 
   // Real-time updates for followers
   useEffect(() => {
@@ -103,15 +108,8 @@ const Profile = ({ onNavigate }) => {
     }
   }
 
-  const handleLogout = () => {
-    logout();
-    onNavigate('landing'); // Redirect to landing page on logout
-  }
-
   const handleBack = () => {
-    if (onNavigate) {
-      onNavigate('home');
-    }
+    handleNavigate('home');
   };
 
   const handleSave = async () => {
@@ -170,7 +168,7 @@ const Profile = ({ onNavigate }) => {
       <div className="account-wrapper">
         <div className="account-card">
           <h1>Please Log In</h1>
-          <button className="cta-btn" onClick={() => onNavigate('sign-in')}>
+          <button className="cta-btn" onClick={() => handleNavigate('sign-in')}>
             Go to Sign In
           </button>
         </div>
@@ -327,17 +325,55 @@ const Profile = ({ onNavigate }) => {
                 </div>
             </div>
 
-            <div className="profile-meta-details">
-                <div className="meta-item">
-                    <span className="meta-label">Email</span>
-                    <span className="meta-value">{user.email || 'No email provided'}</span>
-                </div>
-                {user.gender && (
-                    <div className="meta-item">
-                        <span className="meta-label">Gender</span>
-                        <span className="meta-value">{user.gender}</span>
-                    </div>
-                )}
+            {/* Secondary Navigation Bar */}
+            <div className="profile-secondary-nav">
+                <NavLink 
+                  to="/profile" 
+                  end 
+                  className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
+                >
+                  Overview
+                </NavLink>
+                <NavLink 
+                  to="/profile/films" 
+                  className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
+                >
+                  Films
+                </NavLink>
+                <NavLink 
+                  to="/profile/diary" 
+                  className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
+                >
+                  Diary
+                </NavLink>
+                <NavLink 
+                  to="/profile/reviews" 
+                  className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
+                >
+                  Reviews
+                </NavLink>
+                <NavLink 
+                  to="/profile/watchlist" 
+                  className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
+                >
+                  Watchlist
+                </NavLink>
+                <NavLink 
+                  to="/profile/lists" 
+                  className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
+                >
+                  Lists
+                </NavLink>
+                <NavLink 
+                  to="/profile/likes" 
+                  className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
+                >
+                  Likes
+                </NavLink>
+            </div>
+
+            <div className="profile-content-area">
+                <Outlet />
             </div>
           </div>
         )}

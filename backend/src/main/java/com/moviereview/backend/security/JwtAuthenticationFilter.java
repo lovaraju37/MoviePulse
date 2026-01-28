@@ -40,7 +40,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
 
         jwtToken = authHeader.substring(7);
-        userEmail = jwtUtils.extractUsername(jwtToken);
+        try {
+            userEmail = jwtUtils.extractUsername(jwtToken);
+        } catch (Exception e) {
+            System.out.println("JwtAuthenticationFilter: Failed to extract username from token: " + e.getMessage());
+            filterChain.doFilter(request, response);
+            return;
+        }
 
         if (userEmail != null && SecurityContextHolder.getContext().getAuthentication() == null) {
             try {

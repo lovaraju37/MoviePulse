@@ -6,7 +6,7 @@ import './Profile.css'; // Reusing Profile styles
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
-const UserProfile = ({ onNavigate }) => {
+const UserProfile = () => {
   const { id } = useParams();
   const { user: currentUser, token } = useAuth();
   const navigate = useNavigate();
@@ -95,6 +95,17 @@ const UserProfile = ({ onNavigate }) => {
                         {isOwnProfile ? (
                             <button className="edit-profile-btn" onClick={() => navigate('/profile')}>
                                 EDIT PROFILE
+                            </button>
+                        ) : !currentUser ? (
+                            <button 
+                                className="edit-profile-btn" 
+                                onClick={() => navigate('/signin')}
+                                style={{
+                                    backgroundColor: '#3b82f6', 
+                                    color: '#fff'
+                                }}
+                            >
+                                Sign in to follow
                             </button>
                         ) : (
                             <button 

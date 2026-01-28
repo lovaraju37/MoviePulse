@@ -9,6 +9,7 @@ import com.moviereview.backend.repository.MovieListRepository;
 import org.springframework.http.ResponseEntity;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.security.core.Authentication;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
@@ -54,6 +55,7 @@ public class UserController {
     }
 
     @GetMapping("/{id}")
+    @Transactional(readOnly = true)
     public ResponseEntity<?> getUserProfile(@PathVariable Long id, Authentication authentication) {
         User targetUser = userRepository.findById(id).orElse(null);
         if (targetUser == null) {
@@ -89,6 +91,7 @@ public class UserController {
     }
 
     @PostMapping("/{id}/follow")
+    @Transactional
     public ResponseEntity<?> followUser(@PathVariable Long id, Authentication authentication) {
         String email = authentication.getName();
         User currentUser = userRepository.findByEmail(email)
@@ -130,6 +133,7 @@ public class UserController {
     }
 
     @PostMapping("/{id}/unfollow")
+    @Transactional
     public ResponseEntity<?> unfollowUser(@PathVariable Long id, Authentication authentication) {
         String email = authentication.getName();
         User currentUser = userRepository.findByEmail(email)
