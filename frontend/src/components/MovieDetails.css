@@ -30,6 +30,10 @@
 
 .poster-section {
   flex-shrink: 0;
+  position: sticky;
+  top: 50vh;
+  transform: translateY(-50%);
+  z-index: 5;
 }
 
 .main-poster {
@@ -209,7 +213,6 @@
 
 .icon-label {
   font-size: 0.7rem;
-  text-transform: uppercase;
   letter-spacing: 0.5px;
   font-weight: 500;
 }
@@ -533,6 +536,43 @@
   transform: scale(1.1);
 }
 
+.friend-tooltip {
+  visibility: hidden;
+  background-color: #333d4b;
+  color: #fff;
+  text-align: center;
+  padding: 5px 10px;
+  border-radius: 4px;
+  position: absolute;
+  z-index: 10;
+  bottom: 125%; /* Position above */
+  left: 50%;
+  transform: translateX(-50%);
+  opacity: 0;
+  transition: opacity 0.3s;
+  white-space: nowrap;
+  font-size: 0.75rem;
+  font-weight: 600;
+  pointer-events: none;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+}
+
+.friend-tooltip::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  margin-left: -5px;
+  border-width: 5px;
+  border-style: solid;
+  border-color: #333d4b transparent transparent transparent;
+}
+
+.friend-avatar:hover .friend-tooltip {
+  visibility: visible;
+  opacity: 1;
+}
+
 /* Releases List */
 .releases-list {
   display: flex;
@@ -659,11 +699,6 @@
   flex-shrink: 0;
 }
 
-.country-flag {
-  font-size: 1.2rem;
-  line-height: 1;
-}
-
 .country-name {
   color: #e2e8f0;
   font-weight: 600;
@@ -713,10 +748,6 @@
   gap: 12px;
   width: 200px;
   flex-shrink: 0;
-}
-
-.country-flag-large {
-  font-size: 1.5rem;
 }
 
 .country-name-large {

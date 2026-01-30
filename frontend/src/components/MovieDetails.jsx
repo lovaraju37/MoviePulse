@@ -2,12 +2,19 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import Navbar from './Navbar';
 import './MovieDetails.css';
+import ReviewModal from './ReviewModal';
 import { useAuth } from '../context/AuthContext';
-import { Eye, Heart, Clock, Star, Share2 } from 'lucide-react';
+import { Eye, Heart, Clock, Star, Share2, X, Plus, Minus } from 'lucide-react';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 const IMAGE_BASE_URL = 'https://image.tmdb.org/t/p/w500';
 const BACKDROP_BASE_URL = 'https://image.tmdb.org/t/p/original';
+
+const releaseTypeMap = {
+  1: 'PREMIERE',
+  3: 'THEATRICAL',
+  4: 'DIGITAL'
+};
 
 const MovieDetails = () => {
   const { id } = useParams();
@@ -18,6 +25,250 @@ const MovieDetails = () => {
   const [activeTab, setActiveTab] = useState('CAST');
   const [releaseSort, setReleaseSort] = useState('DATE');
   const [showSortMenu, setShowSortMenu] = useState(false);
+  const [selectedCountries, setSelectedCountries] = useState(() => {
+    try {
+      const saved = localStorage.getItem('preferredCountries');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+  const [countrySearchTerm, setCountrySearchTerm] = useState('');
+  const [showFilterMenu, setShowFilterMenu] = useState(false);
+  const [inWatchlist, setInWatchlist] = useState(false);
+  const [isWatchlistHovered, setIsWatchlistHovered] = useState(false);
+  const [isLiked, setIsLiked] = useState(false);
+  const [isLikeHovered, setIsLikeHovered] = useState(false);
+  const [isWatched, setIsWatched] = useState(false);
+  const [isWatchedHovered, setIsWatchedHovered] = useState(false);
+  const [friendActivity, setFriendActivity] = useState([]);
+  const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
+  const [userRating, setUserRating] = useState(0);
+
+  useEffect(() => {
+    localStorage.setItem('preferredCountries', JSON.stringify(selectedCountries));
+  }, [selectedCountries]);
+
+  useEffect(() => {
+      if (user && movie) {
+          // Check watchlist status
+          fetch(`${API_BASE_URL}/api/watchlist/${movie.id}/check`, {
+              headers: {
+                  'Authorization': `Bearer ${localStorage.getItem('token')}`
+              }
+          })
+          .then(res => res.json())
+          .then(data => setInWatchlist(data.inWatchlist))
+          .catch(err => console.error(err));
+
+          // Check like status
+          fetch(`${API_BASE_URL}/api/likes/${movie.id}/check`, {
+              headers: {
+                  'Authorization': `Bearer ${localStorage.getItem('token')}`
+              }
+          })
+          .then(res => res.json())
+          .then(data => setIsLiked(data.isLiked))
+          .catch(err => console.error(err));
+
+          // Check watched status
+          fetch(`${API_BASE_URL}/api/watched/${movie.id}/check`, {
+              headers: {
+                  'Authorization': `Bearer ${localStorage.getItem('token')}`
+              }
+          })
+          .then(res => res.json())
+          .then(data => setIsWatched(data.isWatched))
+          .catch(err => console.error(err));
+
+          // Check review status
+          fetch(`${API_BASE_URL}/api/reviews/movie/${movie.id}/check`, {
+              headers: {
+                  'Authorization': `Bearer ${localStorage.getItem('token')}`
+              }
+          })
+          .then(res => res.json())
+          .then(data => {
+              if (data.hasReview) {
+                  setUserRating(data.rating);
+              } else {
+                  setUserRating(0);
+              }
+          })
+          .catch(err => console.error(err));
+
+          // Check friend activity
+          fetch(`${API_BASE_URL}/api/movies/${movie.id}/friend-activity`, {
+              headers: {
+                  'Authorization': `Bearer ${localStorage.getItem('token')}`
+              }
+          })
+          .then(async res => {
+              if (res.ok) {
+                  const data = await res.json();
+                  if (Array.isArray(data)) {
+                      setFriendActivity(data);
+                  } else {
+                      setFriendActivity([]);
+                  }
+              } else {
+                  setFriendActivity([]);
+              }
+          })
+          .catch(err => {
+              console.error('Error fetching friend activity:', err);
+              setFriendActivity([]);
+          });
+      }
+  }, [user, movie]);
+
+  const toggleWatched = () => {
+    if (!user) {
+        navigate('/signin');
+        return;
+    }
+
+    if (isWatched) {
+        fetch(`${API_BASE_URL}/api/watched/${movie.id}`, {
+            method: 'DELETE',
+            headers: {
+                'Authorization': `Bearer ${localStorage.getItem('token')}`
+            }
+        })
+        .then(res => res.json())
+        .then(() => setIsWatched(false))
+        .catch(err => console.error(err));
+    } else {
+        fetch(`${API_BASE_URL}/api/watched`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${localStorage.getItem('token')}`
+            },
+            body: JSON.stringify({
+                movieId: movie.id,
+                title: movie.title,
+                posterPath: movie.poster_path,
+                voteAverage: movie.vote_average,
+                releaseDate: movie.release_date
+            })
+        })
+        .then(res => res.json())
+        .then(() => {
+            setIsWatched(true);
+            setInWatchlist(false);
+        })
+        .catch(err => console.error(err));
+    }
+  };
+
+  const toggleLike = () => {
+    if (!user) {
+        navigate('/signin');
+        return;
+    }
+
+    if (isLiked) {
+        fetch(`${API_BASE_URL}/api/likes/${movie.id}`, {
+            method: 'DELETE',
+            headers: {
+                'Authorization': `Bearer ${localStorage.getItem('token')}`
+            }
+        })
+        .then(res => res.json())
+        .then(() => setIsLiked(false))
+        .catch(err => console.error(err));
+    } else {
+        fetch(`${API_BASE_URL}/api/likes`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${localStorage.getItem('token')}`
+            },
+            body: JSON.stringify({
+                movieId: movie.id,
+                title: movie.title,
+                posterPath: movie.poster_path,
+                voteAverage: movie.vote_average,
+                releaseDate: movie.release_date
+            })
+        })
+        .then(res => res.json())
+        .then(() => setIsLiked(true))
+        .catch(err => console.error(err));
+    }
+  };
+
+  const toggleWatchlist = () => {
+      if (!user) {
+          navigate('/signin');
+          return;
+      }
+
+      if (inWatchlist) {
+          fetch(`${API_BASE_URL}/api/watchlist/${movie.id}`, {
+              method: 'DELETE',
+              headers: {
+                  'Authorization': `Bearer ${localStorage.getItem('token')}`
+              }
+          })
+          .then(res => res.json())
+          .then(() => setInWatchlist(false))
+          .catch(err => console.error(err));
+      } else {
+          fetch(`${API_BASE_URL}/api/watchlist`, {
+              method: 'POST',
+              headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${localStorage.getItem('token')}`
+              },
+              body: JSON.stringify({
+                  movieId: movie.id,
+                  title: movie.title,
+                  posterPath: movie.poster_path,
+                  voteAverage: movie.vote_average,
+                  releaseDate: movie.release_date
+              })
+          })
+          .then(res => res.json())
+          .then(() => setInWatchlist(true))
+          .catch(err => console.error(err));
+      }
+  };
+
+  const handleSaveReview = (reviewData) => {
+    // Send to backend
+    fetch(`${API_BASE_URL}/api/reviews`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({
+            ...reviewData,
+            movieTitle: movie.title,
+            moviePosterUrl: movie.poster_path,
+            movieYear: movie.release_date ? new Date(movie.release_date).getFullYear().toString() : ''
+        })
+    })
+    .then(res => res.json())
+    .then(data => {
+        console.log('Review saved successfully:', data);
+    })
+    .catch(err => console.error('Error saving review:', err));
+
+    if (reviewData.isWatched && !isWatched) {
+        setIsWatched(true);
+        setInWatchlist(false); // Remove from watchlist if watched
+    }
+    if (reviewData.isLiked !== isLiked) {
+        setIsLiked(reviewData.isLiked);
+    }
+    if (reviewData.rating !== undefined) {
+        setUserRating(parseFloat(reviewData.rating));
+    }
+    setIsReviewModalOpen(false);
+  };
 
   useEffect(() => {
     const fetchMovieDetails = async () => {
@@ -50,11 +301,13 @@ const MovieDetails = () => {
     fetchMovieDetails();
   }, [id]);
 
-  const releaseTypeMap = {
-    1: 'PREMIERE',
-    3: 'THEATRICAL',
-    4: 'DIGITAL'
-  };
+  const availableCountries = React.useMemo(() => {
+    if (!movie?.release_dates?.results) return [];
+    return movie.release_dates.results.map(c => ({
+        code: c.iso_3166_1,
+        name: new Intl.DisplayNames(['en'], { type: 'region' }).of(c.iso_3166_1)
+    })).sort((a, b) => a.name.localeCompare(b.name));
+  }, [movie]);
 
   // Process releases: flatten, filter, and group
   const groupedReleases = React.useMemo(() => {
@@ -62,6 +315,8 @@ const MovieDetails = () => {
 
     const allReleases = [];
     movie.release_dates.results.forEach(country => {
+       if (selectedCountries.length > 0 && !selectedCountries.includes(country.iso_3166_1)) return;
+       
        const countryName = new Intl.DisplayNames(['en'], { type: 'region' }).of(country.iso_3166_1);
        country.release_dates.forEach(release => {
           if ([1, 3, 4].includes(release.type)) {
@@ -121,7 +376,7 @@ const MovieDetails = () => {
         
         return sortedCountries;
     }
-  }, [movie, releaseSort]);
+  }, [movie, releaseSort, selectedCountries]);
 
   if (loading) return <div className="loading-screen">Loading...</div>;
   if (!movie) return <div className="error-screen">Movie not found</div>;
@@ -148,14 +403,6 @@ const MovieDetails = () => {
     .filter(person => getCrewPriority(person.job) < 99)
     .sort((a, b) => getCrewPriority(a.job) - getCrewPriority(b.job))
     : [];
-
-  const getFlagEmoji = (countryCode) => {
-    const codePoints = countryCode
-      .toUpperCase()
-      .split('')
-      .map(char =>  127397 + char.charCodeAt());
-    return String.fromCodePoint(...codePoints);
-  };
 
   const formatDate = (dateString) => {
     const date = new Date(dateString);
@@ -211,30 +458,118 @@ const MovieDetails = () => {
               ) : (
                  <div className="action-card-content logged-in">
                     <div className="icons-row">
-                       <div className="icon-btn">
-                          <Eye size={24} strokeWidth={1.5} />
-                          <span className="icon-label">Watch</span>
+                       <div 
+                          className="icon-btn"
+                          onClick={toggleWatched}
+                          style={{ cursor: 'pointer' }}
+                          onMouseEnter={() => setIsWatchedHovered(true)}
+                          onMouseLeave={() => setIsWatchedHovered(false)}
+                       >
+                          <Eye 
+                              size={24} 
+                              strokeWidth={1.5} 
+                              color={isWatched ? '#00e054' : '#fff'}
+                              fill="none"
+                          />
+                          <span className="icon-label" style={{ color: isWatched ? '#00e054' : 'inherit' }}>
+                             {isWatched ? (isWatchedHovered ? 'Remove' : 'Watched') : 'Watch'}
+                          </span>
                        </div>
-                       <div className="icon-btn">
-                          <Heart size={24} strokeWidth={1.5} />
-                          <span className="icon-label">Like</span>
+                       <div 
+                          className="icon-btn"
+                          onClick={toggleLike}
+                          style={{ cursor: 'pointer' }}
+                          onMouseEnter={() => setIsLikeHovered(true)}
+                          onMouseLeave={() => setIsLikeHovered(false)}
+                       >
+                          <Heart 
+                             size={24} 
+                             strokeWidth={1.5} 
+                             color={isLiked ? '#ff5c5c' : '#fff'}
+                             fill={isLiked ? '#ff5c5c' : 'none'}
+                          />
+                          <span className="icon-label" style={{ color: isLiked ? '#ff5c5c' : 'inherit' }}>
+                             {isLiked && isLikeHovered ? 'Remove' : 'Like'}
+                          </span>
                        </div>
-                       <div className="icon-btn">
-                          <Clock size={24} strokeWidth={1.5} />
-                          <span className="icon-label">Watchlist</span>
+                       <div 
+                          className="icon-btn" 
+                          onClick={toggleWatchlist} 
+                          style={{ cursor: 'pointer' }}
+                          onMouseEnter={() => setIsWatchlistHovered(true)}
+                          onMouseLeave={() => setIsWatchlistHovered(false)}
+                       >
+                          <div style={{ position: 'relative', width: '24px', height: '24px' }}>
+                              <Clock 
+                                size={24} 
+                                strokeWidth={inWatchlist ? 2 : 1.5} 
+                                color={inWatchlist ? '#40bcf4' : '#fff'} 
+                                fill="none" 
+                            />
+                              <div style={{
+                                  position: 'absolute',
+                                  bottom: '-2px',
+                                  right: '-5px',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  backgroundColor: '#000', 
+                                  borderRadius: '50%',
+                                  width: '12px',
+                                  height: '12px',
+                                  border: inWatchlist ? '1px solid #40bcf4' : '1px solid #fff'
+                              }}>
+                                  {inWatchlist ? (
+                                      <Minus size={8} color="#40bcf4" strokeWidth={4} />
+                                  ) : (
+                                      <Plus size={8} color="#fff" strokeWidth={3} />
+                                  )}
+                              </div>
+                          </div>
+                          <span className="icon-label" style={{ color: inWatchlist ? '#40bcf4' : 'inherit' }}>
+                              {inWatchlist && isWatchlistHovered ? 'Remove' : 'Watchlist'}
+                          </span>
                        </div>
                     </div>
                     <div className="action-divider"></div>
                     <div className="rate-row">
                        <span className="rate-label">Rate</span>
                        <div className="stars">
-                          {[1,2,3,4,5].map(i => <Star key={i} size={20} strokeWidth={1} className="star-icon" />)}
+                          {[1,2,3,4,5].map(i => (
+                            <div key={i} style={{ position: 'relative', display: 'inline-block' }}>
+                                {/* Background Star (Empty) */}
+                                <Star 
+                                    size={20} 
+                                    color={i <= Math.ceil(userRating) ? "#40bcf4" : "#678"} // Change border color if part of rating
+                                    strokeWidth={1} 
+                                    className="star-icon"
+                                />
+                                
+                                {/* Filled Star Overlay */}
+                                {(i <= userRating || (i === Math.ceil(userRating) && userRating % 1 !== 0)) && (
+                                    <div style={{ 
+                                        position: 'absolute', 
+                                        top: 0, 
+                                        left: 0, 
+                                        width: i <= userRating ? '100%' : `${(userRating % 1) * 100}%`, 
+                                        overflow: 'hidden' 
+                                    }}>
+                                        <Star 
+                                            size={20} 
+                                            fill="#40bcf4" 
+                                            color="#40bcf4"
+                                            strokeWidth={1}
+                                        />
+                                    </div>
+                                )}
+                            </div>
+                          ))}
                        </div>
                     </div>
                     <div className="action-divider"></div>
                     <div className="menu-options">
                        <div className="menu-item">Show your activity</div>
-                       <div className="menu-item">Review or log...</div>
+                       <div className="menu-item" onClick={() => setIsReviewModalOpen(true)}>Review or log...</div>
                        <div className="menu-item">Add to lists...</div>
                     </div>
                     <div className="action-divider"></div>
@@ -382,6 +717,119 @@ const MovieDetails = () => {
                              </div>
                           )}
                        </div>
+
+                       <div className="sort-container" style={{ marginLeft: '20px' }}>
+                          <span 
+                             className="sort-label"
+                             onClick={() => setShowFilterMenu(!showFilterMenu)}
+                          >
+                             FILTER: {selectedCountries.length === 0 ? 'ALL' : `SELECTED (${selectedCountries.length})`} <span className="sort-arrow">⌄</span>
+                          </span>
+                          {showFilterMenu && (
+                             <div className="sort-menu" style={{ width: '260px', maxHeight: '400px', display: 'flex', flexDirection: 'column' }}>
+                                <div style={{ padding: '8px', borderBottom: '1px solid rgba(255,255,255,0.1)', display: 'flex', gap: '8px', alignItems: 'center' }}>
+                                    <input 
+                                        type="text" 
+                                        placeholder="Search countries..." 
+                                        value={countrySearchTerm}
+                                        onChange={(e) => setCountrySearchTerm(e.target.value)}
+                                        onClick={(e) => e.stopPropagation()}
+                                        style={{
+                                            flex: 1,
+                                            padding: '8px',
+                                            backgroundColor: '#334155',
+                                            border: '1px solid #475569',
+                                            borderRadius: '4px',
+                                            color: '#fff',
+                                            fontSize: '0.9rem',
+                                            outline: 'none',
+                                            minWidth: 0
+                                        }}
+                                    />
+                                    <button 
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            setShowFilterMenu(false);
+                                        }}
+                                        style={{
+                                            background: 'transparent',
+                                            border: 'none',
+                                            color: '#94a3b8',
+                                            cursor: 'pointer',
+                                            padding: '4px',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            borderRadius: '4px',
+                                            transition: 'background 0.2s, color 0.2s'
+                                        }}
+                                        onMouseEnter={(e) => {
+                                            e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.1)';
+                                            e.currentTarget.style.color = '#fff';
+                                        }}
+                                        onMouseLeave={(e) => {
+                                            e.currentTarget.style.backgroundColor = 'transparent';
+                                            e.currentTarget.style.color = '#94a3b8';
+                                        }}
+                                        title="Close menu"
+                                    >
+                                        <X size={18} />
+                                    </button>
+                                </div>
+                                <div style={{ overflowY: 'auto', flex: 1 }}>
+                                    <div 
+                                       className={`sort-option ${selectedCountries.length === 0 ? 'active' : ''}`}
+                                       onClick={() => setSelectedCountries([])}
+                                       style={{ fontStyle: 'italic', borderBottom: '1px solid rgba(255,255,255,0.1)' }}
+                                    >
+                                       Show All (Clear Filter)
+                                    </div>
+                                    {availableCountries
+                                        .filter(c => c.name.toLowerCase().includes(countrySearchTerm.toLowerCase()))
+                                        .sort((a, b) => {
+                                            const aSelected = selectedCountries.includes(a.code);
+                                            const bSelected = selectedCountries.includes(b.code);
+                                            if (aSelected && !bSelected) return -1;
+                                            if (!aSelected && bSelected) return 1;
+                                            return 0;
+                                        })
+                                        .map(country => {
+                                            const isSelected = selectedCountries.includes(country.code);
+                                            return (
+                                                <div 
+                                                   key={country.code}
+                                                   className={`sort-option ${isSelected ? 'active' : ''}`}
+                                                   onClick={(e) => {
+                                                       e.stopPropagation();
+                                                       if (isSelected) {
+                                                           setSelectedCountries(prev => prev.filter(c => c !== country.code));
+                                                       } else {
+                                                           setSelectedCountries(prev => [...prev, country.code]);
+                                                           setCountrySearchTerm('');
+                                                       }
+                                                   }}
+                                                   style={{ display: 'flex', alignItems: 'center', gap: '10px' }}
+                                                >
+                                                   <input 
+                                                        type="checkbox" 
+                                                        checked={isSelected} 
+                                                        readOnly 
+                                                        style={{ 
+                                                            cursor: 'pointer', 
+                                                            accentColor: '#00e054',
+                                                            width: '16px',
+                                                            height: '16px'
+                                                        }}
+                                                   />
+                                                   <span>{country.name}</span>
+                                                </div>
+                                            );
+                                        })
+                                    }
+                                </div>
+                             </div>
+                          )}
+                       </div>
                     </div>
 
                     {releaseSort === 'DATE' ? (
@@ -394,12 +842,19 @@ const MovieDetails = () => {
                               <div className="release-rows">
                                  {releases.map((release, idx) => (
                                     <div key={`${release.countryCode}-${idx}`} className="release-row">
-                                       <span className="release-date">{formatDate(release.release_date)}</span>
-                                       <div className="release-country">
-                                          <span className="country-flag">{getFlagEmoji(release.countryCode)}</span>
-                                          <span className="country-name">{release.countryName}</span>
-                                       </div>
-                                       <div className="release-note-container">
+                                      <span className="release-date">{formatDate(release.release_date)}</span>
+                                      <div className="release-country">
+                                         <img 
+                                            src={`https://flagcdn.com/w40/${release.countryCode.toLowerCase()}.png`}
+                                            srcSet={`https://flagcdn.com/w80/${release.countryCode.toLowerCase()}.png 2x`}
+                                            width="24"
+                                            alt={release.countryName} 
+                                            className="country-flag-img"
+                                            style={{ marginRight: '8px', borderRadius: '2px' }}
+                                         />
+                                         <span className="country-name">{release.countryName}</span>
+                                      </div>
+                                      <div className="release-note-container">
                                           {release.certification && <span className="release-cert">{release.certification}</span>}
                                           {release.note && <span className="release-note-text">{release.note}</span>}
                                        </div>
@@ -416,7 +871,14 @@ const MovieDetails = () => {
                           groupedReleases.map((country) => (
                              <div key={country.countryName} className="country-release-row">
                                 <div className="country-info-col">
-                                   <span className="country-flag-large">{getFlagEmoji(country.countryCode)}</span>
+                                   <img 
+                                      src={`https://flagcdn.com/w40/${country.countryCode.toLowerCase()}.png`}
+                                      srcSet={`https://flagcdn.com/w80/${country.countryCode.toLowerCase()}.png 2x`}
+                                      width="32"
+                                      alt={country.countryName} 
+                                      className="country-flag-img-large"
+                                      style={{ marginRight: '12px', borderRadius: '4px' }}
+                                   />
                                    <span className="country-name-large">{country.countryName}</span>
                                 </div>
                                 <div className="country-releases-col">
@@ -445,22 +907,63 @@ const MovieDetails = () => {
              {movie.runtime} mins
           </div>
 
+          {user && friendActivity.length > 0 && (
           <div className="friend-activity-section">
              <div className="activity-header">
                 <span className="activity-title">ACTIVITY FROM FRIENDS</span>
-                <span className="activity-stats">2 WATCHED • 7 WANT TO WATCH</span>
+                <span className="activity-stats">
+                   {friendActivity.filter(a => a.status === 'WATCHED' || a.status === 'LIKED').length} WATCHED • {friendActivity.filter(a => a.status === 'WATCHLIST').length} WANT TO WATCH
+                </span>
              </div>
              <div className="activity-avatars">
-                {[1, 2, 3, 4, 5].map((i) => (
-                   <div key={i} className="friend-avatar" style={{backgroundColor: `hsl(${i * 60}, 70%, 50%)`}}>
-                      {/* Placeholder for avatar */}
+                {friendActivity.map((friend) => (
+                   <div key={friend.userId} className="friend-avatar" style={{
+                       backgroundImage: `url(${friend.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(friend.name)}&background=random`})`,
+                       backgroundSize: 'cover',
+                       position: 'relative'
+                   }}>
+                      <div style={{
+                          position: 'absolute',
+                          bottom: '-4px',
+                          right: '-4px',
+                          backgroundColor: '#14181c',
+                          borderRadius: '50%',
+                          width: '16px',
+                          height: '16px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          border: '1px solid #14181c'
+                      }}>
+                          {friend.status === 'LIKED' && <Heart size={10} fill="#ff5c5c" color="#ff5c5c" />}
+                          {friend.status === 'WATCHED' && <Eye size={10} color="#00e054" />}
+                          {friend.status === 'WATCHLIST' && <Clock size={10} color="#40bcf4" />}
+                      </div>
+                      <div className="friend-tooltip">
+                          {friend.status === 'LIKED' && `Liked by ${friend.name}`}
+                          {friend.status === 'WATCHED' && `Watched by ${friend.name}`}
+                          {friend.status === 'WATCHLIST' && `${friend.name} wants to watch`}
+                      </div>
                    </div>
                 ))}
              </div>
           </div>
+          )}
 
         </div>
       </div>
+      <ReviewModal 
+        isOpen={isReviewModalOpen}
+        onClose={() => setIsReviewModalOpen(false)}
+        movie={movie}
+        onSave={handleSaveReview}
+        initialData={{
+            isWatched: isWatched,
+            isLiked: isLiked,
+            watchedDate: new Date().toISOString().split('T')[0]
+        }}
+        onLikeChange={(newStatus) => setIsLiked(newStatus)}
+      />
     </div>
   );
 };

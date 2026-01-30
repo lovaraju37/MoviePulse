@@ -14,7 +14,7 @@ import PersonDetails from './components/PersonDetails'
 import OAuthCallback from './components/OAuthCallback'
 import { AuthProvider, useAuth } from './context/AuthContext'
 
-import { ProfileOverview, ProfileFilms, ProfileDiary, ProfileReviews, ProfileWatchlist, ProfileLists, ProfileLikes } from './components/ProfileTabs'
+import { ProfileOverview, ProfileActivity, ProfileFilms, ProfileDiary, ProfileReviews, ProfileWatchlist, ProfileLists, ProfileLikes } from './components/ProfileTabs'
 
 function AppContent() {
   const navigate = useNavigate();
@@ -38,6 +38,7 @@ function AppContent() {
       <Route path="/signin" element={<SignIn onNavigate={handleNavigate} />} />
       <Route path="/profile" element={<Profile user={user} onNavigate={handleNavigate} />}>
         <Route index element={<ProfileOverview />} />
+        <Route path="activity" element={<ProfileActivity />} />
         <Route path="films" element={<ProfileFilms />} />
         <Route path="diary" element={<ProfileDiary />} />
         <Route path="reviews" element={<ProfileReviews />} />

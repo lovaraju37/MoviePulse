@@ -1,0 +1,123 @@
+.review-card {
+  display: flex;
+  gap: 15px;
+  padding: 15px;
+  background-color: transparent;
+  border-bottom: 1px solid #456;
+  margin-bottom: 15px;
+}
+
+.review-card-poster {
+  flex-shrink: 0;
+  width: 70px;
+}
+
+.review-card-poster img {
+  width: 100%;
+  border-radius: 4px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+  display: block;
+}
+
+.review-card-content {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.review-card-header {
+  margin-bottom: 8px;
+}
+
+.review-movie-title {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #fff;
+  font-family: 'Tiempos Headline', serif;
+}
+
+.review-movie-year {
+  font-weight: 300;
+  color: #89a;
+  font-size: 1rem;
+  font-family: sans-serif;
+  margin-left: 4px;
+}
+
+.review-meta {
+  display: flex;
+  align-items: center;
+  margin-top: 4px;
+  font-size: 0.85rem;
+  color: #89a;
+}
+
+.review-rating {
+  display: flex;
+  gap: 1px;
+  margin-right: 8px;
+}
+
+.review-date {
+  margin-left: 10px;
+}
+
+.review-body {
+  margin-bottom: 10px;
+  font-size: 0.95rem;
+  line-height: 1.5;
+  color: #9ab;
+}
+
+.review-text {
+  white-space: pre-wrap;
+}
+
+.spoiler-warning {
+  background-color: #2c3440;
+  border: 1px solid #456;
+  border-radius: 4px;
+  padding: 15px;
+  text-align: center;
+  color: #9ab;
+}
+
+.spoiler-warning p {
+  margin: 0 0 10px 0;
+  font-weight: 500;
+}
+
+.spoiler-reveal-btn {
+  background-color: #456;
+  color: #fff;
+  border: none;
+  border-radius: 3px;
+  padding: 6px 12px;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.spoiler-reveal-btn:hover {
+  background-color: #567;
+}
+
+.revealed-spoiler {
+  background-color: rgba(255, 0, 0, 0.05); /* Slight red tint for revealed spoilers */
+  padding: 10px;
+  border-left: 3px solid #ff5c5c;
+  border-radius: 0 4px 4px 0;
+}
+
+.review-card-footer {
+  margin-top: auto;
+  font-size: 0.85rem;
+  color: #678;
+}
+
+.review-likes {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}

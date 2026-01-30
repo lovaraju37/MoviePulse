@@ -1,20 +1,73 @@
 package com.moviereview.backend.controller;
 
 import com.moviereview.backend.service.TmdbService;
+import com.moviereview.backend.repository.*;
+import com.moviereview.backend.model.User;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.security.core.Authentication;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 @RestController
 @RequestMapping("/api/movies")
 public class MovieController {
 
     private final TmdbService tmdbService;
+    private final UserRepository userRepository;
+    private final LikeRepository likeRepository;
+    private final WatchedRepository watchedRepository;
+    private final WatchlistRepository watchlistRepository;
 
-    public MovieController(TmdbService tmdbService) {
+    public MovieController(TmdbService tmdbService, UserRepository userRepository, LikeRepository likeRepository,
+            WatchedRepository watchedRepository, WatchlistRepository watchlistRepository) {
         this.tmdbService = tmdbService;
+        this.userRepository = userRepository;
+        this.likeRepository = likeRepository;
+        this.watchedRepository = watchedRepository;
+        this.watchlistRepository = watchlistRepository;
+    }
+
+    @GetMapping("/{id}/friend-activity")
+    public ResponseEntity<List<Map<String, Object>>> getFriendActivity(@PathVariable String id,
+            Authentication authentication) {
+        if (authentication == null) {
+            return ResponseEntity.ok(List.of());
+        }
+
+        String email = authentication.getName();
+        User currentUser = userRepository.findByEmail(email).orElse(null);
+        if (currentUser == null) {
+            return ResponseEntity.ok(List.of());
+        }
+
+        Set<User> following = currentUser.getFollowing();
+        List<Map<String, Object>> activity = new ArrayList<>();
+
+        for (User friend : following) {
+            String status = null;
+            // Precedence: Like > Watched > Watchlist
+            if (likeRepository.existsByUserIdAndMovieId(friend.getId(), id)) {
+                status = "LIKED";
+            } else if (watchedRepository.existsByUserIdAndMovieId(friend.getId(), id)) {
+                status = "WATCHED";
+            } else if (watchlistRepository.existsByUserIdAndMovieId(friend.getId(), id)) {
+                status = "WATCHLIST";
+            }
+
+            if (status != null) {
+                activity.add(Map.of(
+                        "userId", friend.getId(),
+                        "name", friend.getName(),
+                        "avatarUrl", friend.getAvatarUrl() != null ? friend.getAvatarUrl() : "",
+                        "status", status));
+            }
+        }
+
+        return ResponseEntity.ok(activity);
     }
 
     @GetMapping("/trending")

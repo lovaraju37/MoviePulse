@@ -7,12 +7,14 @@ import { useAuth } from '../context/AuthContext';
 import Navbar from './Navbar';
 import SockJS from 'sockjs-client';
 import Stomp from 'stompjs';
-import { Outlet, NavLink } from 'react-router-dom';
+import { Outlet, NavLink, useLocation } from 'react-router-dom';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 const Profile = ({ onNavigate }) => {
   const { user, updateUser, token } = useAuth();
+  const location = useLocation();
+  const isProfileOverview = location.pathname === '/profile' || location.pathname === '/profile/';
   const userId = user?.id;
 
   const [isEditing, setIsEditing] = useState(false);
@@ -33,18 +35,6 @@ const Profile = ({ onNavigate }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const stompClientRef = useRef(null);
-
-  useEffect(() => {
-    if (user) {
-      setFormData({
-        name: user.name || '',
-        bio: user.bio || '',
-        gender: user.gender || '',
-        picture: user.picture || ''
-      });
-      fetchUserStats();
-    }
-  }, [user, fetchUserStats]);
 
   const fetchUserStats = useCallback(async () => {
     if (!userId) return;
@@ -69,6 +59,18 @@ const Profile = ({ onNavigate }) => {
       console.error("Failed to fetch user stats", err);
     }
   }, [token, userId]);
+
+  useEffect(() => {
+    if (user) {
+      setFormData({
+        name: user.name || '',
+        bio: user.bio || '',
+        gender: user.gender || '',
+        picture: user.picture || ''
+      });
+      fetchUserStats();
+    }
+  }, [user, fetchUserStats]);
 
   // Real-time updates for followers
   useEffect(() => {
@@ -277,100 +279,44 @@ const Profile = ({ onNavigate }) => {
           </div>
         ) : (
           <div>
-            <div className="profile-header-section">
-                <div className="profile-left-col">
-                    <div className="profile-avatar-section">
-                      <img 
-                        src={formData.picture || user.picture || "https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp&f=y"} 
-                        alt="Profile" 
-                        className="profile-avatar-large"
-                      />
+              <div className="profile-slim-header" style={!isProfileOverview ? { justifyContent: 'flex-start' } : {}}>
+                <div className="profile-slim-header-left">
+                  <img 
+                    src={formData.picture || user.picture || "https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp&f=y"} 
+                    alt={user.name} 
+                    className="profile-slim-avatar" 
+                  />
+                  <div style={{ display: 'flex', flexDirection: 'column' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                      <span className="profile-slim-username" style={!isProfileOverview ? { marginBottom: 0 } : {}}>{user.name}</span>
+                      {isProfileOverview && (
+                        <button className="edit-profile-btn" onClick={() => setIsEditing(true)} style={{ padding: '0.4rem 0.8rem', fontSize: '0.75rem' }}>
+                          Edit
+                        </button>
+                      )}
                     </div>
-                    
-                    <div className="profile-info-section">
-                        <div className="profile-name-row">
-                            <h1 className="profile-name">{user.name}</h1>
-                            <button className="edit-profile-btn" onClick={() => setIsEditing(true)}>
-                                Edit Profile
-                            </button>
-                            <button className="more-options-btn" title="More options">•••</button>
-                        </div>
-                        <div className="profile-bio">
-                            {user.bio}
-                        </div>
-                    </div>
+                    {isProfileOverview && (
+                      <div className="profile-stats">
+                        <span className="stat-item">{userStats.followersCount} followers</span>
+                        <span className="stat-item">{userStats.followingCount} following</span>
+                        <span className="stat-item">{userStats.filmsCount} films</span>
+                        <span className="stat-item">{userStats.listsCount} lists</span>
+                        <span className="stat-item">{userStats.thisYearCount} this year</span>
+                      </div>
+                    )}
+                  </div>
                 </div>
-
-                <div className="profile-stats-section">
-                    <div className="stat-item">
-                        <span className="stat-value">{userStats.filmsCount}</span>
-                        <span className="stat-label">Films</span>
-                    </div>
-                    <div className="stat-item">
-                        <span className="stat-value">{userStats.thisYearCount}</span>
-                        <span className="stat-label">This Year</span>
-                    </div>
-                    <div className="stat-item">
-                        <span className="stat-value">{userStats.listsCount}</span>
-                        <span className="stat-label">Lists</span>
-                    </div>
-                    <div className="stat-item">
-                        <span className="stat-value">{userStats.followingCount}</span>
-                        <span className="stat-label">Following</span>
-                    </div>
-                    <div className="stat-item">
-                        <span className="stat-value">{userStats.followersCount}</span>
-                        <span className="stat-label">Followers</span>
-                    </div>
+                <div className="profile-slim-nav" style={!isProfileOverview ? { marginLeft: '30px' } : {}}>
+                   <NavLink to="/profile" end className={({ isActive }) => `profile-slim-nav-item ${isActive ? 'active' : ''}`}>Profile</NavLink>
+                   <NavLink to="/profile/activity" className={({ isActive }) => `profile-slim-nav-item ${isActive ? 'active' : ''}`}>Activity</NavLink>
+                   <NavLink to="/profile/films" className={({ isActive }) => `profile-slim-nav-item ${isActive ? 'active' : ''}`}>Films</NavLink>
+                   <NavLink to="/profile/diary" className={({ isActive }) => `profile-slim-nav-item ${isActive ? 'active' : ''}`}>Diary</NavLink>
+                   <NavLink to="/profile/reviews" className={({ isActive }) => `profile-slim-nav-item ${isActive ? 'active' : ''}`}>Reviews</NavLink>
+                   <NavLink to="/profile/watchlist" className={({ isActive }) => `profile-slim-nav-item ${isActive ? 'active' : ''}`}>Watchlist</NavLink>
+                   <NavLink to="/profile/lists" className={({ isActive }) => `profile-slim-nav-item ${isActive ? 'active' : ''}`}>Lists</NavLink>
+                   <NavLink to="/profile/likes" className={({ isActive }) => `profile-slim-nav-item ${isActive ? 'active' : ''}`}>Likes</NavLink>
                 </div>
-            </div>
-
-            {/* Secondary Navigation Bar */}
-            <div className="profile-secondary-nav">
-                <NavLink 
-                  to="/profile" 
-                  end 
-                  className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
-                >
-                  Overview
-                </NavLink>
-                <NavLink 
-                  to="/profile/films" 
-                  className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
-                >
-                  Films
-                </NavLink>
-                <NavLink 
-                  to="/profile/diary" 
-                  className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
-                >
-                  Diary
-                </NavLink>
-                <NavLink 
-                  to="/profile/reviews" 
-                  className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
-                >
-                  Reviews
-                </NavLink>
-                <NavLink 
-                  to="/profile/watchlist" 
-                  className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
-                >
-                  Watchlist
-                </NavLink>
-                <NavLink 
-                  to="/profile/lists" 
-                  className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
-                >
-                  Lists
-                </NavLink>
-                <NavLink 
-                  to="/profile/likes" 
-                  className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
-                >
-                  Likes
-                </NavLink>
-            </div>
+              </div>
 
             <div className="profile-content-area">
                 <Outlet />
