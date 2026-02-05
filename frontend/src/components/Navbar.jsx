@@ -389,7 +389,7 @@ const Navbar = () => {
             <div className="nav-left">
                 <div className="logo" onClick={() => navigate(user ? '/home' : '/')} style={{ cursor: 'pointer' }}>MoviePulse</div>
                 <div className="nav-links">
-                    <button className="nav-link" type="button">Films</button>
+                    <button className="nav-link" type="button" onClick={() => navigate('/films')}>Films</button>
                     <button className="nav-link" type="button">Lists</button>
                 </div>
             </div>

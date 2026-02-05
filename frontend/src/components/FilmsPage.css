@@ -1,0 +1,58 @@
+.films-page-container {
+    min-height: 100vh;
+    background-color: #14181c;
+    color: #fff;
+    padding-bottom: 40px;
+}
+
+.films-content {
+    max-width: 950px;
+    margin: 0 auto;
+    padding: 20px;
+    padding-top: 40px;
+}
+
+.films-section {
+    margin-bottom: 40px;
+}
+
+.section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+    border-bottom: 1px solid #445566;
+    padding-bottom: 10px;
+}
+
+.section-title {
+    font-size: 0.9rem;
+    color: #99aabb;
+    letter-spacing: 0.075em;
+    font-weight: normal;
+    text-transform: uppercase;
+    margin: 0;
+}
+
+.see-more-btn {
+    font-size: 0.8rem;
+    color: #667788;
+    cursor: pointer;
+    background: none;
+    border: none;
+    padding: 0;
+}
+
+.see-more-btn:hover {
+    color: #fff;
+}
+
+.movies-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 20px;
+}
+
+.movie-card-container {
+    width: 100%;
+}

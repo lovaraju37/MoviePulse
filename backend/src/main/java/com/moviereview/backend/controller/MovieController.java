@@ -75,6 +75,11 @@ public class MovieController {
         return ResponseEntity.ok(tmdbService.getTrendingMovies());
     }
 
+    @GetMapping("/top-rated")
+    public ResponseEntity<List<Map<String, Object>>> getTopRatedMovies() {
+        return ResponseEntity.ok(tmdbService.getTopRatedMovies());
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<Map<String, Object>> getMovie(@PathVariable String id) {
         Map<String, Object> movie = tmdbService.getMovie(id);

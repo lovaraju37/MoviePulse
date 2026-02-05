@@ -69,6 +69,26 @@ public class TmdbService {
         return response.getResults();
     }
 
+    public List<Map<String, Object>> getTopRatedMovies() {
+        String url = UriComponentsBuilder.fromUriString(apiUrl + "/movie/top_rated")
+                .queryParam("api_key", apiKey)
+                .toUriString();
+
+        logger.info("Fetching top rated movies from URL: {}", url);
+
+        TmdbResultsResponse response = fetchTmdbData(
+                url,
+                new ParameterizedTypeReference<TmdbResultsResponse>() {
+                },
+                "Error fetching top rated movies from TMDB: ");
+
+        if (response == null || response.getResults() == null) {
+            return List.of();
+        }
+
+        return response.getResults();
+    }
+
     public Map<String, Object> getMovie(String id) {
         String url = UriComponentsBuilder.fromUriString(apiUrl + "/movie/" + id)
                 .queryParam("api_key", apiKey)

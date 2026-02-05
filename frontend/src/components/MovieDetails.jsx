@@ -6,7 +6,7 @@ import ReviewModal from './ReviewModal';
 import { useAuth } from '../context/AuthContext';
 import { Eye, Heart, Clock, Star, Share2, X, Plus, Minus } from 'lucide-react';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
 const IMAGE_BASE_URL = 'https://image.tmdb.org/t/p/w500';
 const BACKDROP_BASE_URL = 'https://image.tmdb.org/t/p/original';
 
