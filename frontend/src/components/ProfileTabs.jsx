@@ -364,7 +364,7 @@ export const ProfileReviews = () => {
       <div className="profile-content-title">You have written {reviews.length} reviews</div>
       <div className="reviews-list">
         {reviews.map(review => (
-          <ReviewCard key={review.id} review={review} />
+          <ReviewCard key={review.id} review={review} reviewAuthor={user} />
         ))}
       </div>
     </div>
@@ -442,13 +442,22 @@ export const ProfileWatchlist = () => {
       <div className="profile-content-title">You want to see {watchlist.length} films</div>
       <div className="watchlist-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: '20px' }}>
         {watchlist.map(item => (
-          <div key={item.id} className="watchlist-item" onClick={() => navigate(`/movie/${item.movieId}`)} style={{ cursor: 'pointer' }}>
-            <img 
-              src={item.posterPath ? `${IMAGE_BASE_URL}${item.posterPath}` : 'https://via.placeholder.com/150x225'} 
-              alt={item.movieTitle} 
-              style={{ width: '100%', borderRadius: '8px' }}
+          <div key={item.id} className="watchlist-item">
+            <MoviePoster 
+                movie={{
+                    id: item.movieId,
+                    title: item.movieTitle,
+                    poster_path: item.posterPath,
+                    vote_average: item.voteAverage,
+                    release_date: item.releaseDate
+                }}
+                showTitleTooltip={true}
             />
-            <div className="watchlist-item-info">
+            <div 
+                className="watchlist-item-info" 
+                onClick={() => navigate(`/movie/${item.movieId}`)}
+                style={{ cursor: 'pointer' }}
+            >
               <h4 style={{ fontSize: '0.9rem', marginTop: '8px', marginBottom: '4px' }}>{item.movieTitle}</h4>
               <div style={{ fontSize: '0.8rem', color: '#999' }}>
                 <span>★ {item.voteAverage}</span>
@@ -474,7 +483,6 @@ export const ProfileLikes = () => {
   const { user: profileUser } = useOutletContext() || {};
   const user = profileUser || authUser;
   
-  const navigate = useNavigate();
   const [likes, setLikes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -540,11 +548,14 @@ export const ProfileLikes = () => {
       <div className="profile-content-title">You have liked {likes.length} films</div>
       <div className="watchlist-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: '20px' }}>
         {likes.map(item => (
-          <div key={item.id} className="watchlist-item" onClick={() => navigate(`/movie/${item.movieId}`)} style={{ cursor: 'pointer' }}>
-            <img 
-              src={item.posterPath ? `${IMAGE_BASE_URL}${item.posterPath}` : 'https://via.placeholder.com/150x225'} 
-              alt={item.movieTitle}
-              style={{ width: '100%', borderRadius: '8px' }}
+          <div key={item.id} className="watchlist-item">
+            <MoviePoster 
+                movie={{
+                    id: item.movieId,
+                    title: item.movieTitle,
+                    poster_path: item.posterPath
+                }}
+                showTitleTooltip={true}
             />
           </div>
         ))}

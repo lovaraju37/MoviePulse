@@ -3,6 +3,8 @@ import { useNavigate, useParams } from 'react-router-dom';
 import Navbar from './Navbar';
 import './MovieDetails.css';
 import ReviewModal from './ReviewModal';
+import RatingStars from './RatingStars';
+import MoviePoster from './MoviePoster';
 import { useAuth } from '../context/AuthContext';
 import { Eye, Heart, Clock, Star, Share2, X, Plus, Minus } from 'lucide-react';
 
@@ -267,7 +269,6 @@ const MovieDetails = () => {
     if (reviewData.isWatched) {
         if (!isWatched) {
             setIsWatched(true);
-            setInWatchlist(false); // Remove from watchlist if watched
             
             // Persist to backend
             fetch(`${API_BASE_URL}/api/watched`, {
@@ -284,6 +285,17 @@ const MovieDetails = () => {
                     releaseDate: movie.release_date
                 })
             }).catch(e => console.error("Failed to persist watched status", e));
+        }
+
+        // Always ensure removed from watchlist if watched
+        if (inWatchlist) {
+            setInWatchlist(false);
+            fetch(`${API_BASE_URL}/api/watchlist/${movie.id}`, {
+                method: 'DELETE',
+                headers: {
+                    'Authorization': `Bearer ${localStorage.getItem('token')}`
+                }
+            }).catch(e => console.error("Failed to remove from watchlist", e));
         }
     } else {
         // User explicitly unchecked "Watched"
@@ -477,10 +489,14 @@ const MovieDetails = () => {
       
       <div className="movie-content-wrapper">
         <div className="poster-section">
-          <img 
-            src={movie.poster_path ? `${IMAGE_BASE_URL}${movie.poster_path}` : 'https://via.placeholder.com/300x450'} 
-            alt={movie.title} 
+          <MoviePoster 
+            movie={movie} 
             className="main-poster"
+            showTitleTooltip={false}
+            isLiked={isLiked}
+            isWatched={isWatched}
+            onLikeToggle={toggleLike}
+            onWatchToggle={toggleWatched}
           />
         </div>
         
@@ -590,38 +606,14 @@ const MovieDetails = () => {
                        </div>
                     </div>
                     <div className="action-divider"></div>
+                    {userRating > 0 && (
                     <div className="rate-row">
                        <span className="rate-label">Rate</span>
                        <div className="stars">
-                          {[1,2,3,4,5].map(i => (
-                            <div key={i} style={{ position: 'relative', display: 'inline-block' }}>
-                                {/* Background Star (Empty) */}
-                                <Star 
-                                    size={20} 
-                                    color={i <= Math.ceil(userRating) ? "#40bcf4" : "#678"} 
-                                    strokeWidth={1} 
-                                    className="star-icon"
-                                />
-                                
-                                {/* Filled Star Overlay */}
-                                <div style={{ 
-                                    position: 'absolute', 
-                                    top: 0, 
-                                    left: 0, 
-                                    width: i <= Math.floor(userRating) ? '100%' : (i === Math.ceil(userRating) && userRating % 1 !== 0) ? '50%' : '0%', 
-                                    overflow: 'hidden' 
-                                }}>
-                                    <Star 
-                                        size={20} 
-                                        fill="#40bcf4" 
-                                        color="#40bcf4"
-                                        strokeWidth={1}
-                                    />
-                                </div>
-                            </div>
-                          ))}
+                          <RatingStars rating={userRating} size={20} color="#00e054" />
                        </div>
                     </div>
+                    )}
                     <div className="action-divider"></div>
                     <div className="menu-options">
                        <div className="menu-item" onClick={() => navigate(`/movie/${id}/activity`)}>Show your activity</div>
@@ -668,7 +660,10 @@ const MovieDetails = () => {
                                        <div 
                                            className="menu-item"
                                            onClick={() => {
-                                               setModalInitialData({});
+                                               setModalInitialData({
+                                                   isLiked: isLiked,
+                                                   isWatched: isWatched
+                                               });
                                                setIsReviewModalOpen(true);
                                                setShowLogOptions(false);
                                            }}
@@ -681,7 +676,10 @@ const MovieDetails = () => {
                            </div>
                        ) : (
                            <div className="menu-item" onClick={() => {
-                               setModalInitialData({});
+                               setModalInitialData({
+                                   isLiked: isLiked,
+                                   isWatched: isWatched
+                               });
                                setIsReviewModalOpen(true);
                            }}>
                                Review or log...
@@ -1106,17 +1104,9 @@ const MovieDetails = () => {
                                      </span>
                                  </div>
                                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '12px' }}>
-                                     {[1,2,3,4,5].map(star => (
-                                         <Star 
-                                             key={star} 
-                                             size={16} 
-                                             fill={star <= userReview.rating ? "#00e054" : "none"} 
-                                             color={star <= userReview.rating ? "#00e054" : "#445566"} 
-                                             strokeWidth={0}
-                                         />
-                                     ))}
-                                     {userReview.isLiked && <Heart size={16} fill="#ff5c5c" color="#ff5c5c" style={{ marginLeft: '8px' }} />}
-                                 </div>
+                                    <RatingStars rating={userReview.rating} size={16} color="#00e054" />
+                                    {userReview.isLiked && <Heart size={16} fill="#ff5c5c" color="#ff5c5c" style={{ marginLeft: '8px' }} />}
+                                </div>
                                  {userReview.content && (
                                      <p style={{ color: '#ddeeff', lineHeight: '1.6', fontSize: '1rem', whiteSpace: 'pre-wrap' }}>
                                          {userReview.content}
@@ -1142,9 +1132,14 @@ const MovieDetails = () => {
                          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
                              <button 
                                 onClick={() => {
-                                    setIsActivityModalOpen(false);
-                                    setIsReviewModalOpen(true);
-                                }}
+                                   setIsActivityModalOpen(false);
+                                   setModalInitialData({
+                                       ...userReview,
+                                       isLiked: isLiked,
+                                       isWatched: isWatched
+                                   });
+                                   setIsReviewModalOpen(true);
+                               }}
                                 style={{
                                     backgroundColor: '#40bcf4',
                                     color: '#fff',
@@ -1165,6 +1160,10 @@ const MovieDetails = () => {
                         <button 
                             onClick={() => {
                                 setIsActivityModalOpen(false);
+                                setModalInitialData({
+                                    isLiked: isLiked,
+                                    isWatched: isWatched
+                                });
                                 setIsReviewModalOpen(true);
                             }}
                             style={{

@@ -1,5 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { X, Star, Heart } from 'lucide-react';
+import MoviePoster from './MoviePoster';
 import './ReviewModal.css';
 
 const IMAGE_BASE_URL = 'https://image.tmdb.org/t/p/w500';
@@ -106,7 +107,10 @@ const ReviewForm = ({ onClose, movie, onSave, initialData, onLikeChange }) => {
             key={starIndex}
             className="review-star"
             onMouseMove={(e) => handleStarMouseMove(e, starIndex)}
-            onClick={() => setRating(hoverRating)}
+            onClick={() => {
+                setRating(hoverRating);
+                if (hoverRating > 0) setIsWatched(true);
+            }}
             style={{ padding: '2px' }}
         >
             <div style={{ position: 'relative', pointerEvents: 'none' }}>
@@ -128,8 +132,8 @@ const ReviewForm = ({ onClose, movie, onSave, initialData, onLikeChange }) => {
                     }}>
                         <Star 
                             size={24} 
-                            fill="#40bcf4" 
-                            color="#40bcf4"
+                            fill="#00e054" 
+                            color="#00e054"
                             strokeWidth={1.5}
                         />
                     </div>
@@ -151,9 +155,14 @@ const ReviewForm = ({ onClose, movie, onSave, initialData, onLikeChange }) => {
 
         <div className="review-modal-body">
           <div className="review-modal-poster">
-            <img 
-              src={movie.poster_path ? `${IMAGE_BASE_URL}${movie.poster_path}` : 'https://via.placeholder.com/150x225'} 
-              alt={movie.title} 
+            <MoviePoster 
+                movie={movie}
+                isLiked={isLiked}
+                isWatched={isWatched}
+                onLikeToggle={() => setIsLiked(!isLiked)}
+                onWatchToggle={() => setIsWatched(!isWatched)}
+                showTitleTooltip={false}
+                style={{ width: '100%', height: '100%' }}
             />
           </div>
 
@@ -261,6 +270,9 @@ const ReviewForm = ({ onClose, movie, onSave, initialData, onLikeChange }) => {
                             const val = e.target.value;
                             if (val === '' || (parseFloat(val) >= 0 && parseFloat(val) <= 5)) {
                                 setRating(val);
+                                if (parseFloat(val) > 0) {
+                                    setIsWatched(true);
+                                }
                             }
                         }}
                         onBlur={() => {

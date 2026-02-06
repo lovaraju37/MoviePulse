@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import Navbar from './Navbar';
+import RatingStars from './RatingStars';
 import { Star, Heart, Eye, Clock, Calendar, List, RefreshCw } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import MoviePoster from './MoviePoster';
@@ -282,37 +283,13 @@ const UserMovieActivity = () => {
                                         {item.type === 'REVIEW' ? (
                                             <>
                                                 {displayName} reviewed and rated <span className="movie-link">{movie.title}</span> 
+                                                {item.rating > 0 && (
                                                 <div className="activity-meta">
                                                     <div className="activity-stars">
-                                                        {[1, 2, 3, 4, 5].map(star => (
-                                                            <div key={star} style={{ position: 'relative', display: 'inline-block', width: '12px', height: '12px', marginRight: '2px' }}>
-                                                                <Star 
-                                                                    size={12} 
-                                                                    fill="none"
-                                                                    color="#678" 
-                                                                    strokeWidth={1.5}
-                                                                    style={{ position: 'absolute', top: 0, left: 0 }}
-                                                                />
-                                                                <div style={{ 
-                                                                    position: 'absolute', 
-                                                                    top: 0, 
-                                                                    left: 0, 
-                                                                    width: star <= Math.floor(item.rating) ? '100%' : (star === Math.ceil(item.rating) && item.rating % 1 !== 0) ? '50%' : '0%', 
-                                                                    overflow: 'hidden',
-                                                                    height: '100%'
-                                                                }}>
-                                                                    <Star 
-                                                                        size={12} 
-                                                                        fill="#00e054" 
-                                                                        color="#00e054" 
-                                                                        strokeWidth={0}
-                                                                        style={{ position: 'absolute', top: 0, left: 0 }}
-                                                                    />
-                                                                </div>
-                                                            </div>
-                                                        ))}
+                                                        <RatingStars rating={item.rating} size={12} color="#00e054" />
                                                     </div>
                                                 </div>
+                                                )}
                                             </>
                                         ) : (
                                             <>
@@ -354,33 +331,11 @@ const UserMovieActivity = () => {
                                 <div className="review-meta">
                                     <div className="review-author">Review by <span className="author-name">{displayName}</span></div>
                                     <div className="review-rating">
-                                        {[1, 2, 3, 4, 5].map(star => (
-                                            <div key={star} style={{ position: 'relative', display: 'inline-block', width: '16px', height: '16px', marginRight: '2px' }}>
-                                                <Star 
-                                                    size={16} 
-                                                    fill="none"
-                                                    color="#445566" 
-                                                    strokeWidth={1.5}
-                                                    style={{ position: 'absolute', top: 0, left: 0 }}
-                                                />
-                                                <div style={{ 
-                                                    position: 'absolute', 
-                                                    top: 0, 
-                                                    left: 0, 
-                                                    width: star <= Math.floor(userReview.rating) ? '100%' : (star === Math.ceil(userReview.rating) && userReview.rating % 1 !== 0) ? '50%' : '0%', 
-                                                    overflow: 'hidden',
-                                                    height: '100%'
-                                                }}>
-                                                    <Star 
-                                                        size={16} 
-                                                        fill="#00e054" 
-                                                        color="#00e054" 
-                                                        strokeWidth={0}
-                                                        style={{ position: 'absolute', top: 0, left: 0 }}
-                                                    />
-                                                </div>
+                                        {userReview.rating > 0 && (
+                                            <div style={{ display: 'inline-block', marginRight: '6px' }}>
+                                                <RatingStars rating={userReview.rating} size={16} color="#00e054" />
                                             </div>
-                                        ))}
+                                        )}
 
                                         {(userReview.isRewatch || userReview.rewatch) && (
                                             <div title="Rewatch" style={{ display: 'inline-flex', alignItems: 'center', marginLeft: '6px', verticalAlign: 'middle' }}>
@@ -434,8 +389,8 @@ const UserMovieActivity = () => {
                                 >
                                     <Heart 
                                         size={18} 
-                                        color={userReview.isReviewLiked ? "#FF8000" : "#667788"} 
-                                        fill={userReview.isReviewLiked ? "#FF8000" : "none"}
+                                        color={(userReview.isReviewLiked || isOwnProfile) ? "#FF8000" : "#667788"} 
+                                        fill={(userReview.isReviewLiked || isOwnProfile) ? "#FF8000" : "none"}
                                     />
                                     <span>Like review</span>
                                     <span style={{ marginLeft: '2px' }}>{userReview.reviewLikeCount || 0}</span>

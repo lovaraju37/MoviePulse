@@ -15,15 +15,22 @@ const MoviePoster = ({
     showTitleTooltip = true, 
     className = '', 
     style = {}, 
-    onClick = null
+    onClick = null,
+    isLiked: externalIsLiked,
+    isWatched: externalIsWatched,
+    onLikeToggle,
+    onWatchToggle
 }) => {
     const navigate = useNavigate();
     const { user } = useAuth();
     const [isHovered, setIsHovered] = useState(false);
     
     // State for actions
-    const [isLiked, setIsLiked] = useState(false); // Movie like
-    const [isWatched, setIsWatched] = useState(false); // Movie watched
+    const [internalIsLiked, setInternalIsLiked] = useState(false); // Movie like
+    const [internalIsWatched, setInternalIsWatched] = useState(false); // Movie watched
+    
+    const isLiked = externalIsLiked !== undefined ? externalIsLiked : internalIsLiked;
+    const isWatched = externalIsWatched !== undefined ? externalIsWatched : internalIsWatched;
     
     // Track previous review to handle prop changes during render
     const [prevReview, setPrevReview] = useState(review);
@@ -46,10 +53,14 @@ const MoviePoster = ({
     const [statusChecked, setStatusChecked] = useState(false);
 
     const checkStatus = async () => {
-        if (!user || statusChecked || review) return; // If review exists, we use review like status primarily for the heart? 
-        // Actually, if it's a review card, the heart likes the REVIEW.
-        // If it's a movie card, the heart likes the MOVIE.
+        if (!user || statusChecked || review) return; 
         
+        // If controlled by parent, don't fetch
+        if (externalIsLiked !== undefined || externalIsWatched !== undefined) {
+            setStatusChecked(true);
+            return;
+        }
+
         try {
             const token = localStorage.getItem('token');
             if (!token) return;
@@ -63,11 +74,11 @@ const MoviePoster = ({
 
             if (likeRes.ok) {
                 const data = await likeRes.json();
-                setIsLiked(data.isLiked);
+                setInternalIsLiked(data.isLiked);
             }
             if (watchedRes.ok) {
                 const data = await watchedRes.json();
-                setIsWatched(data.isWatched);
+                setInternalIsWatched(data.isWatched);
             }
             setStatusChecked(true);
         } catch (error) {
@@ -97,34 +108,33 @@ const MoviePoster = ({
             return;
         }
 
+        if (onLikeToggle) {
+            onLikeToggle();
+            return;
+        }
+
         const token = localStorage.getItem('token');
         const headers = { 
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${token}` 
         };
 
-        if (review) {
-            // Like/Unlike Review
-            try {
-                const url = `${API_BASE_URL}/api/reviews/${review.id}/${isReviewLiked ? 'unlike' : 'like'}`;
-                // Checking backend controller: 
-                // @PostMapping("/{reviewId}/like")
-                // @PostMapping("/{reviewId}/unlike")
-                // Both are POST.
-                
-                const res = await fetch(url, { method: 'POST', headers });
-                if (res.ok) {
-                    setIsReviewLiked(!isReviewLiked);
+        try {
+            // For review card, we like the REVIEW
+            if (review) {
+                if (isReviewLiked) {
+                    await fetch(`${API_BASE_URL}/api/reviews/${review.id || review.reviewId}/like`, { method: 'DELETE', headers });
+                    setIsReviewLiked(false);
+                } else {
+                    await fetch(`${API_BASE_URL}/api/reviews/${review.id || review.reviewId}/like`, { method: 'POST', headers });
+                    setIsReviewLiked(true);
                 }
-            } catch (err) {
-                console.error("Error liking review:", err);
-            }
-        } else {
-            // Like/Unlike Movie
-            try {
+            } 
+            // For movie card, we like the MOVIE
+            else {
                 if (isLiked) {
                     await fetch(`${API_BASE_URL}/api/likes/${movie.id}`, { method: 'DELETE', headers });
-                    setIsLiked(false);
+                    setInternalIsLiked(false);
                 } else {
                     await fetch(`${API_BASE_URL}/api/likes`, { 
                         method: 'POST', 
@@ -137,11 +147,11 @@ const MoviePoster = ({
                             releaseDate: movie.release_date
                         })
                     });
-                    setIsLiked(true);
+                    setInternalIsLiked(true);
                 }
-            } catch (err) {
-                console.error("Error liking movie:", err);
             }
+        } catch (err) {
+            console.error("Error liking movie:", err);
         }
     };
 
@@ -149,6 +159,11 @@ const MoviePoster = ({
         e.stopPropagation();
         if (!user) {
             navigate('/signin');
+            return;
+        }
+
+        if (onWatchToggle) {
+            onWatchToggle();
             return;
         }
 
@@ -166,7 +181,7 @@ const MoviePoster = ({
         try {
             if (isWatched) {
                 await fetch(`${API_BASE_URL}/api/watched/${movie.id}`, { method: 'DELETE', headers });
-                setIsWatched(false);
+                setInternalIsWatched(false);
             } else {
                 await fetch(`${API_BASE_URL}/api/watched`, { 
                     method: 'POST', 
@@ -179,7 +194,7 @@ const MoviePoster = ({
                         releaseDate: movie.release_date
                     })
                 });
-                setIsWatched(true);
+                setInternalIsWatched(true);
             }
         } catch (err) {
             console.error("Error toggling watched:", err);
@@ -292,7 +307,7 @@ const MoviePoster = ({
                     display: 'flex',
                     justifyContent: 'space-between',
                     alignItems: 'center',
-                    padding: '0 20px',
+                    padding: '0 10px',
                     zIndex: 5
                 }}>
                     <Eye 

@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import Navbar from './Navbar';
 import { useAuth } from '../context/AuthContext';
-import { Star, Heart, MessageSquare, RefreshCw, AlignLeft, ThumbsUp } from 'lucide-react';
+import { Star, Heart, MessageSquare, RefreshCw, AlignLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import MoviePoster from './MoviePoster';
+import RatingStars from './RatingStars';
 import './LandingPage.css';
 
 const API_BASE_URL = 'http://localhost:8080';
@@ -14,6 +15,7 @@ const HomePage = () => {
     const navigate = useNavigate();
     const [reviews, setReviews] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [showAllActivity, setShowAllActivity] = useState(false);
 
     useEffect(() => {
         if (user) {
@@ -48,14 +50,19 @@ const HomePage = () => {
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px', borderBottom: '1px solid #445566', paddingBottom: '10px' }}>
                         <h2 style={{ fontSize: '0.9rem', color: '#99aabb', letterSpacing: '0.075em', fontWeight: 'normal', margin: 0 }}>NEW FROM FRIENDS</h2>
-                        <span style={{ fontSize: '0.8rem', color: '#667788', cursor: 'pointer' }}>⚡ ALL ACTIVITY</span>
+                        <span 
+                            style={{ fontSize: '0.8rem', color: '#667788', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px' }}
+                            onClick={() => setShowAllActivity(!showAllActivity)}
+                        >
+                            ⚡ {showAllActivity ? 'SHOW LESS' : 'ALL ACTIVITY'}
+                        </span>
                     </div>
 
                     {loading ? (
                         <div style={{ color: '#99aabb' }}>Loading activity...</div>
                     ) : reviews.length > 0 ? (
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '20px' }}>
-                            {reviews.map(review => (
+                            {(showAllActivity ? reviews : reviews.slice(0, 4)).map(review => (
                                 <div key={review.id} style={{ width: '100%' }}>
                                     {/* Poster Card */}
                                     <div style={{ marginBottom: '8px' }}>
@@ -69,6 +76,7 @@ const HomePage = () => {
                                             review={null} // Explicitly null so the poster reflects the VIEWER'S relationship with the movie, not the reviewer's
                                             showTitleTooltip={true}
                                             onClick={() => navigate(`/movie/${review.movieId}/activity?userId=${review.user.id}&tab=REVIEWS`)}
+                                            style={{ height: '230px', width: '100%' }}
                                         />
                                         
                                         {/* User Info Bar (Always visible below poster in this view) */}
@@ -102,28 +110,11 @@ const HomePage = () => {
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', height: '20px' }}>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
                                             {/* Stars */}
-                                            <div style={{ position: 'relative', display: 'inline-block', width: '50px', height: '10px' }}>
-                                                {/* Background Stars (Grey) */}
-                                                <div style={{ position: 'absolute', top: 0, left: 0, display: 'flex' }}>
-                                                    {[1, 2, 3, 4, 5].map((star) => (
-                                                        <Star key={`bg-${star}`} size={10} fill="#2c3440" color="#2c3440" strokeWidth={0} />
-                                                    ))}
-                                                </div>
-                                                {/* Foreground Stars (Green) */}
-                                                <div style={{ 
-                                                    position: 'absolute', 
-                                                    top: 0, 
-                                                    left: 0, 
-                                                    display: 'flex', 
-                                                    width: `${(review.rating / 5) * 100}%`, 
-                                                    overflow: 'hidden',
-                                                    whiteSpace: 'nowrap'
-                                                }}>
-                                                    {[1, 2, 3, 4, 5].map((star) => (
-                                                        <Star key={`fg-${star}`} size={10} fill="#00e054" color="#00e054" strokeWidth={0} />
-                                                    ))}
-                                                </div>
+                                            {review.rating > 0 && (
+                                            <div style={{ display: 'flex', alignItems: 'center', marginRight: '4px' }}>
+                                                <RatingStars rating={review.rating} size={12} color="#00e054" />
                                             </div>
+                                            )}
                                             
                                             {/* Rewatch Icon */}
                                             {review.rewatch && (

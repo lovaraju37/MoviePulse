@@ -47,6 +47,11 @@ public class ReviewController {
             Review review = reviewRepository.findById(reviewId)
                     .orElseThrow(() -> new RuntimeException("Review not found"));
 
+            // Prevent self-liking
+            if (review.getUser().getId().equals(user.getId())) {
+                return ResponseEntity.badRequest().body("Cannot like your own review");
+            }
+
             if (reviewLikeRepository.existsByUserIdAndReviewId(user.getId(), reviewId)) {
                 return ResponseEntity.badRequest().body("Review already liked");
             }
@@ -59,6 +64,13 @@ public class ReviewController {
             e.printStackTrace();
             return ResponseEntity.internalServerError().body(Map.of("error", e.getMessage()));
         }
+    }
+
+    // Support both DELETE method and POST .../unlike for compatibility
+    @PostMapping("/{reviewId}/unlike")
+    @Transactional
+    public ResponseEntity<?> unlikeReviewPost(@PathVariable Long reviewId, Authentication authentication) {
+        return unlikeReview(reviewId, authentication);
     }
 
     @DeleteMapping("/{reviewId}/like")
@@ -76,6 +88,20 @@ public class ReviewController {
             e.printStackTrace();
             return ResponseEntity.internalServerError().body(Map.of("error", e.getMessage()));
         }
+    }
+
+    @GetMapping("/{reviewId}/likes")
+    public ResponseEntity<?> getReviewLikes(@PathVariable Long reviewId) {
+        List<ReviewLike> likes = reviewLikeRepository.findByReviewId(reviewId);
+        List<Map<String, Object>> users = likes.stream().map(like -> {
+            User u = like.getUser();
+            Map<String, Object> map = new HashMap<>();
+            map.put("id", u.getId());
+            map.put("name", u.getName());
+            map.put("avatarUrl", u.getAvatarUrl());
+            return map;
+        }).toList();
+        return ResponseEntity.ok(users);
     }
 
     @PostMapping
@@ -200,7 +226,8 @@ public class ReviewController {
     }
 
     @GetMapping("/user/{userId}")
-    public ResponseEntity<List<Map<String, Object>>> getUserReviews(@PathVariable Long userId, Authentication authentication) {
+    public ResponseEntity<List<Map<String, Object>>> getUserReviews(@PathVariable Long userId,
+            Authentication authentication) {
         List<Review> reviews = reviewRepository.findByUserId(userId);
         User currentUser = null;
         if (authentication != null) {
@@ -225,8 +252,9 @@ public class ReviewController {
             map.put("user", review.getUser());
             map.put("tags", review.getTags());
 
-            // Check if MOVIE is liked (legacy field isLiked usually meant movie like in some contexts, 
-            // but in ReviewCard it often means Review Like. 
+            // Check if MOVIE is liked (legacy field isLiked usually meant movie like in
+            // some contexts,
+            // but in ReviewCard it often means Review Like.
             // In getFriendReviews, isLiked = movie like, isReviewLiked = review like.
             // Let's keep consistency with getFriendReviews).
             boolean isLiked = likeRepository.existsByUserIdAndMovieId(review.getUser().getId(), review.getMovieId());
@@ -234,7 +262,8 @@ public class ReviewController {
 
             boolean isReviewLiked = false;
             if (finalCurrentUser != null) {
-                isReviewLiked = reviewLikeRepository.existsByUserIdAndReviewId(finalCurrentUser.getId(), review.getId());
+                isReviewLiked = reviewLikeRepository.existsByUserIdAndReviewId(finalCurrentUser.getId(),
+                        review.getId());
             }
             map.put("isReviewLiked", isReviewLiked);
 

@@ -98,32 +98,106 @@
   background-color: #456;
   color: #fff;
   border: none;
-  border-radius: 3px;
   padding: 6px 12px;
-  font-size: 0.8rem;
+  border-radius: 3px;
   cursor: pointer;
-  transition: background-color 0.2s;
+  font-weight: 600;
+  font-size: 0.8rem;
 }
 
 .spoiler-reveal-btn:hover {
   background-color: #567;
 }
 
-.revealed-spoiler {
-  background-color: rgba(255, 0, 0, 0.05); /* Slight red tint for revealed spoilers */
-  padding: 10px;
-  border-left: 3px solid #ff5c5c;
-  border-radius: 0 4px 4px 0;
-}
-
-.review-card-footer {
+.review-footer {
   margin-top: auto;
-  font-size: 0.85rem;
-  color: #678;
-}
-
-.review-likes {
   display: flex;
   align-items: center;
-  gap: 4px;
+  width: 100%;
+  color: #99aabb;
+}
+
+.likes-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.7);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.likes-modal-content {
+  background-color: #1e242a; /* Dark theme bg */
+  border-radius: 6px;
+  width: 90%;
+  max-width: 400px;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+}
+
+.likes-modal-header {
+  padding: 15px;
+  border-bottom: 1px solid #303840;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.likes-modal-title {
+  color: #fff;
+  font-weight: 600;
+  font-size: 1.1rem;
+}
+
+.likes-modal-close {
+  background: none;
+  border: none;
+  color: #9ab;
+  cursor: pointer;
+  padding: 4px;
+}
+
+.likes-modal-close:hover {
+  color: #fff;
+}
+
+.likes-list {
+  padding: 10px 0;
+  overflow-y: auto;
+}
+
+.like-item {
+  display: flex;
+  align-items: center;
+  padding: 10px 15px;
+  border-bottom: 1px solid #303840;
+}
+
+.like-item:last-child {
+  border-bottom: none;
+}
+
+.like-user-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  margin-right: 12px;
+  background-color: #303840;
+  object-fit: cover;
+}
+
+.like-user-name {
+  color: #d8e0e8;
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.like-user-name:hover {
+  color: #fff;
 }

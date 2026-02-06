@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect, useMemo } from 'react';
 
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import MoviePoster from './MoviePoster';
 import SockJS from 'sockjs-client';
 import Stomp from 'stompjs';
 import "./LandingPage.css";
@@ -218,11 +219,17 @@ const SearchBar = ({ navigate, token, initialQuery, initialIsOpen }) => {
                                 borderBottom: '1px solid #333'
                             }}
                         >
-                            <img
-                                src={result.posterUrl || "https://via.placeholder.com/30"}
-                                alt={result.title}
-                                style={{ width: '30px', height: '45px', objectFit: 'cover', marginRight: '10px' }}
-                            />
+                            <div style={{ width: '45px', height: '68px', marginRight: '10px', flexShrink: 0 }}>
+                                <MoviePoster 
+                                    movie={{
+                                        id: result.id,
+                                        title: result.title,
+                                        posterUrl: result.posterUrl
+                                    }}
+                                    showTitleTooltip={false}
+                                    style={{ width: '100%', height: '100%' }}
+                                />
+                            </div>
                             <div style={{ display: 'flex', flexDirection: 'column' }}>
                                 <span style={{ color: '#fff' }}>{result.title}</span>
                                 <span style={{ color: '#94a3b8', fontSize: '0.8rem' }}>
