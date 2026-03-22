@@ -77,17 +77,44 @@ public class UserController {
         LocalDateTime startOfYear = LocalDateTime.of(LocalDateTime.now().getYear(), 1, 1, 0, 0);
         long thisYearCount = reviewRepository.countByUserIdAndCreatedAtAfter(targetUser.getId(), startOfYear);
 
-        return ResponseEntity.ok(Map.of(
-                "id", targetUser.getId(),
-                "name", targetUser.getName(),
-                "bio", targetUser.getBio() != null ? targetUser.getBio() : "",
-                "picture", targetUser.getAvatarUrl() != null ? targetUser.getAvatarUrl() : "",
-                "followersCount", targetUser.getFollowers().size(),
-                "followingCount", targetUser.getFollowing().size(),
-                "filmsCount", filmsCount,
-                "listsCount", listsCount,
-                "thisYearCount", thisYearCount,
-                "isFollowing", isFollowing));
+        Map<String, Object> result = new java.util.HashMap<>();
+        result.put("id", targetUser.getId());
+        result.put("name", targetUser.getName());
+        result.put("bio", targetUser.getBio() != null ? targetUser.getBio() : "");
+        result.put("picture", targetUser.getAvatarUrl() != null ? targetUser.getAvatarUrl() : "");
+        result.put("followersCount", targetUser.getFollowers().size());
+        result.put("followingCount", targetUser.getFollowing().size());
+        result.put("filmsCount", filmsCount);
+        result.put("listsCount", listsCount);
+        result.put("thisYearCount", thisYearCount);
+        result.put("isFollowing", isFollowing);
+        result.put("favoriteMovieIds", targetUser.getFavoriteMovieIds() != null ? targetUser.getFavoriteMovieIds() : "");
+        return ResponseEntity.ok(result);
+    }
+
+    @GetMapping("/{id}/favorites")
+    public ResponseEntity<?> getFavorites(@PathVariable Long id) {
+        User user = userRepository.findById(id).orElse(null);
+        if (user == null) return ResponseEntity.notFound().build();
+        String raw = user.getFavoriteMovieIds();
+        if (raw == null || raw.isBlank()) return ResponseEntity.ok(List.of());
+        List<String> ids = java.util.Arrays.stream(raw.split(","))
+                .map(String::trim).filter(s -> !s.isEmpty()).collect(Collectors.toList());
+        return ResponseEntity.ok(ids);
+    }
+
+    @PostMapping("/favorites")
+    @Transactional
+    public ResponseEntity<?> updateFavorites(@RequestBody Map<String, Object> payload, Authentication authentication) {
+        String email = authentication.getName();
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        @SuppressWarnings("unchecked")
+        List<String> ids = (List<String>) payload.get("movieIds");
+        String joined = ids == null ? "" : ids.stream().limit(4).collect(Collectors.joining(","));
+        user.setFavoriteMovieIds(joined);
+        userRepository.save(user);
+        return ResponseEntity.ok(Map.of("message", "Favorites updated"));
     }
 
     @PostMapping("/{id}/follow")

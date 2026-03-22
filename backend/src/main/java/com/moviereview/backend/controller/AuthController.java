@@ -97,7 +97,9 @@ public class AuthController {
                         "email", user.getEmail(),
                         "picture", user.getAvatarUrl() != null ? user.getAvatarUrl() : "",
                         "bio", user.getBio() != null ? user.getBio() : "",
-                        "gender", user.getGender() != null ? user.getGender() : "")))
+                        "gender", user.getGender() != null ? user.getGender() : "",
+                        "location", user.getLocation() != null ? user.getLocation() : "",
+                        "website", user.getWebsite() != null ? user.getWebsite() : "")))
                 .orElse(ResponseEntity.notFound().build());
     }
 
@@ -125,6 +127,10 @@ public class AuthController {
                         user.setGender(request.getGender());
                     if (request.getPicture() != null)
                         user.setAvatarUrl(request.getPicture());
+                    if (request.getLocation() != null)
+                        user.setLocation(request.getLocation());
+                    if (request.getWebsite() != null)
+                        user.setWebsite(request.getWebsite());
 
                     userRepository.save(user);
 
@@ -134,7 +140,9 @@ public class AuthController {
                             "email", user.getEmail(),
                             "picture", user.getAvatarUrl() != null ? user.getAvatarUrl() : "",
                             "bio", user.getBio() != null ? user.getBio() : "",
-                            "gender", user.getGender() != null ? user.getGender() : ""));
+                            "gender", user.getGender() != null ? user.getGender() : "",
+                            "location", user.getLocation() != null ? user.getLocation() : "",
+                            "website", user.getWebsite() != null ? user.getWebsite() : ""));
                 })
                 .orElse(ResponseEntity.notFound().build());
     }
@@ -223,37 +231,20 @@ public class AuthController {
         private String bio;
         private String gender;
         private String picture;
+        private String location;
+        private String website;
 
-        public String getName() {
-            return name;
-        }
-
-        public void setName(String name) {
-            this.name = name;
-        }
-
-        public String getBio() {
-            return bio;
-        }
-
-        public void setBio(String bio) {
-            this.bio = bio;
-        }
-
-        public String getGender() {
-            return gender;
-        }
-
-        public void setGender(String gender) {
-            this.gender = gender;
-        }
-
-        public String getPicture() {
-            return picture;
-        }
-
-        public void setPicture(String picture) {
-            this.picture = picture;
-        }
+        public String getName() { return name; }
+        public void setName(String name) { this.name = name; }
+        public String getBio() { return bio; }
+        public void setBio(String bio) { this.bio = bio; }
+        public String getGender() { return gender; }
+        public void setGender(String gender) { this.gender = gender; }
+        public String getPicture() { return picture; }
+        public void setPicture(String picture) { this.picture = picture; }
+        public String getLocation() { return location; }
+        public void setLocation(String location) { this.location = location; }
+        public String getWebsite() { return website; }
+        public void setWebsite(String website) { this.website = website; }
     }
 }

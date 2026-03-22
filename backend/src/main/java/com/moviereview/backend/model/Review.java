@@ -31,6 +31,8 @@ public class Review {
 
     private LocalDateTime createdAt = LocalDateTime.now();
 
+    private boolean ratingOnly = false;
+
     @ManyToOne
     @JoinColumn(name = "user_id")
     private User user;
@@ -140,6 +142,14 @@ public class Review {
 
     public void setUser(User user) {
         this.user = user;
+    }
+
+    public boolean isRatingOnly() {
+        return ratingOnly;
+    }
+
+    public void setRatingOnly(boolean ratingOnly) {
+        this.ratingOnly = ratingOnly;
     }
 
     @Override

@@ -28,6 +28,11 @@ public class User {
     private String bio;
 
     private String gender;
+    private String location;
+    private String website;
+
+    @jakarta.persistence.Column(length = 500)
+    private String favoriteMovieIds; // comma-separated ordered list of up to 4 movie IDs
 
     @jakarta.persistence.ManyToMany
     @jakarta.persistence.JoinTable(name = "user_followers", joinColumns = @jakarta.persistence.JoinColumn(name = "user_id"), inverseJoinColumns = @jakarta.persistence.JoinColumn(name = "follower_id"))
@@ -111,6 +116,30 @@ public class User {
 
     public void setGender(String gender) {
         this.gender = gender;
+    }
+
+    public String getLocation() {
+        return location;
+    }
+
+    public void setLocation(String location) {
+        this.location = location;
+    }
+
+    public String getWebsite() {
+        return website;
+    }
+
+    public void setWebsite(String website) {
+        this.website = website;
+    }
+
+    public String getFavoriteMovieIds() {
+        return favoriteMovieIds;
+    }
+
+    public void setFavoriteMovieIds(String favoriteMovieIds) {
+        this.favoriteMovieIds = favoriteMovieIds;
     }
 
     public java.util.Set<User> getFollowers() {

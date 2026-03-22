@@ -142,6 +142,15 @@ public class ReviewController {
         review.setRewatch((Boolean) payload.getOrDefault("isRewatch", false));
         review.setContainsSpoiler((Boolean) payload.getOrDefault("containsSpoiler", false));
 
+        // Mark as rating-only if no review text and flagged explicitly
+        Boolean ratingOnly = (Boolean) payload.getOrDefault("ratingOnly", false);
+        String reviewContent = (String) payload.get("review");
+        review.setRatingOnly(Boolean.TRUE.equals(ratingOnly) && (reviewContent == null || reviewContent.isBlank()));
+        // If user adds text to an existing rating-only entry, promote it to a full review
+        if (reviewContent != null && !reviewContent.isBlank()) {
+            review.setRatingOnly(false);
+        }
+
         String watchedDateStr = (String) payload.get("watchedDate");
         if (watchedDateStr != null) {
             review.setWatchedDate(LocalDate.parse(watchedDateStr));
@@ -198,7 +207,9 @@ public class ReviewController {
 
         List<Review> reviews = reviewRepository.findByUserIdInOrderByCreatedAtDesc(followingIds);
 
-        List<Map<String, Object>> result = reviews.stream().map(review -> {
+        List<Map<String, Object>> result = reviews.stream()
+                .filter(r -> !r.isRatingOnly())
+                .map(review -> {
             Map<String, Object> map = new HashMap<>();
             map.put("id", review.getId());
             map.put("movieId", review.getMovieId());
@@ -236,7 +247,9 @@ public class ReviewController {
         }
 
         User finalCurrentUser = currentUser;
-        List<Map<String, Object>> result = reviews.stream().map(review -> {
+        List<Map<String, Object>> result = reviews.stream()
+                .filter(r -> !r.isRatingOnly())
+                .map(review -> {
             Map<String, Object> map = new HashMap<>();
             map.put("id", review.getId());
             map.put("movieId", review.getMovieId());
@@ -301,10 +314,17 @@ public class ReviewController {
             Review review = reviews.get(0);
             System.out.println("Review found for movie " + movieId + ": " + review.getId());
 
-            response.put("hasReview", true);
+            // Treat as rating-only if flagged OR if content is blank (handles legacy records)
+            boolean effectivelyRatingOnly = review.isRatingOnly() ||
+                    (review.getContent() == null || review.getContent().isBlank());
+
             response.put("rating", review.getRating());
             response.put("reviewId", review.getId());
-            response.put("review", review);
+            response.put("ratingOnly", effectivelyRatingOnly);
+            response.put("hasReview", !effectivelyRatingOnly);
+            if (!effectivelyRatingOnly) {
+                response.put("review", review);
+            }
 
             boolean isReviewLiked = reviewLikeRepository.existsByUserIdAndReviewId(user.getId(), review.getId());
             response.put("isReviewLiked", isReviewLiked);
@@ -341,10 +361,15 @@ public class ReviewController {
 
         if (!reviews.isEmpty()) {
             Review review = reviews.get(0);
-            response.put("hasReview", true);
+            boolean effectivelyRatingOnly = review.isRatingOnly() ||
+                    (review.getContent() == null || review.getContent().isBlank());
+            response.put("hasReview", !effectivelyRatingOnly);
+            response.put("ratingOnly", effectivelyRatingOnly);
             response.put("rating", review.getRating());
             response.put("reviewId", review.getId());
-            response.put("review", review);
+            if (!effectivelyRatingOnly) {
+                response.put("review", review);
+            }
 
             // Check if requesting user liked this review
             if (authentication != null) {

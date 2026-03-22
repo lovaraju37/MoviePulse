@@ -50,6 +50,7 @@ const MovieDetails = () => {
   const [isActivityModalOpen, setIsActivityModalOpen] = useState(false);
   const [showLogOptions, setShowLogOptions] = useState(false);
   const [modalInitialData, setModalInitialData] = useState({});
+  const [hoverRating, setHoverRating] = useState(0);
 
   useEffect(() => {
     localStorage.setItem('preferredCountries', JSON.stringify(selectedCountries));
@@ -95,11 +96,10 @@ const MovieDetails = () => {
           })
           .then(res => res.json())
           .then(data => {
+              setUserRating(data.rating != null ? data.rating : 0);
               if (data.hasReview) {
-                  setUserRating(data.rating);
                   setUserReview(data.review);
               } else {
-                  setUserRating(0);
                   setUserReview(null);
               }
           })
@@ -331,13 +331,70 @@ const MovieDetails = () => {
     })
     .then(res => res.json())
     .then(data => {
+        setUserRating(data.rating != null ? data.rating : 0);
         if (data.hasReview) {
-            setUserRating(data.rating);
             setUserReview(data.review);
+        } else {
+            setUserReview(null);
         }
     });
 
     setIsReviewModalOpen(false);
+  };
+
+  const handleQuickRate = (newRating) => {
+    const prevRating = userRating;
+    // Clicking same rating removes it
+    const ratingToSave = newRating === userRating ? 0 : newRating;
+    setUserRating(ratingToSave);
+
+    fetch(`${API_BASE_URL}/api/reviews`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${localStorage.getItem('token')}`
+      },
+      body: JSON.stringify({
+        movieId: movie.id,
+        movieTitle: movie.title,
+        moviePosterUrl: movie.poster_path,
+        movieYear: movie.release_date ? new Date(movie.release_date).getFullYear().toString() : '',
+        rating: ratingToSave,
+        ratingOnly: true,
+        isWatched: true,
+        watchedDate: new Date().toISOString().split('T')[0],
+        review: userReview?.review || '',
+        tags: userReview?.tags || [],
+        isRewatch: userReview?.isRewatch || false,
+        containsSpoiler: userReview?.containsSpoiler || false,
+        isLiked: isLiked
+      })
+    })
+    .then(res => res.json())
+    .then(() => {
+      // Mark as watched if not already
+      if (!isWatched && ratingToSave > 0) {
+        setIsWatched(true);
+        fetch(`${API_BASE_URL}/api/watched`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('token')}` },
+          body: JSON.stringify({ movieId: movie.id, title: movie.title, posterPath: movie.poster_path, voteAverage: movie.vote_average, releaseDate: movie.release_date })
+        }).catch(console.error);
+      }
+      // Re-fetch to sync
+      return fetch(`${API_BASE_URL}/api/reviews/movie/${movie.id}/check`, {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+      });
+    })
+    .then(res => res.json())
+    .then(data => {
+      setUserRating(data.rating != null ? data.rating : 0);
+      setUserReview(data.hasReview ? data.review : null);
+    })
+    .catch(err => {
+      console.error('Error saving rating:', err);
+      setUserRating(prevRating);
+    });
   };
 
   useEffect(() => {
@@ -606,14 +663,38 @@ const MovieDetails = () => {
                        </div>
                     </div>
                     <div className="action-divider"></div>
-                    {userRating > 0 && (
                     <div className="rate-row">
-                       <span className="rate-label">Rate</span>
-                       <div className="stars">
-                          <RatingStars rating={userRating} size={20} color="#00e054" />
+                       <span className="rate-label">{userRating > 0 ? 'Your rating' : 'Rate'}</span>
+                       <div className="stars" style={{ display: 'flex', gap: '2px' }}
+                         onMouseLeave={() => setHoverRating(0)}
+                       >
+                         {[1,2,3,4,5].map((star) => {
+                           const full = star;
+                           const half = star - 0.5;
+                           const active = hoverRating || userRating;
+                           const isFull = active >= full;
+                           const isHalf = active >= half && active < full;
+                           return (
+                             <div
+                               key={star}
+                               style={{ position: 'relative', cursor: 'pointer', width: '20px', height: '20px' }}
+                               onMouseMove={(e) => {
+                                 const rect = e.currentTarget.getBoundingClientRect();
+                                 setHoverRating(e.clientX - rect.left < rect.width / 2 ? half : full);
+                               }}
+                               onClick={() => handleQuickRate(hoverRating || full)}
+                             >
+                               <Star size={20} color="#678" strokeWidth={1.5} />
+                               {(isFull || isHalf) && (
+                                 <div style={{ position: 'absolute', top: 0, left: 0, width: isFull ? '100%' : '50%', overflow: 'hidden' }}>
+                                   <Star size={20} fill="#00e054" color="#00e054" strokeWidth={1.5} />
+                                 </div>
+                               )}
+                             </div>
+                           );
+                         })}
                        </div>
                     </div>
-                    )}
                     <div className="action-divider"></div>
                     <div className="menu-options">
                        <div className="menu-item" onClick={() => navigate(`/movie/${id}/activity`)}>Show your activity</div>
