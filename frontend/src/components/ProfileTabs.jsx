@@ -4,6 +4,7 @@ import { useNavigate, useOutletContext } from 'react-router-dom';
 import ReviewCard from './ReviewCard';
 import MoviePoster from './MoviePoster';
 import ReviewModal from './ReviewModal';
+import { NewListModal, EditListModal } from './ListsPage';
 import { Heart, Clock, Star, Film, Grid, List as ListIcon, User, UserPlus, UserMinus, BarChart2 } from 'lucide-react';
 import './ProfileTabs.css';
 
@@ -1038,211 +1039,149 @@ export const ProfileLists = () => {
   const navigate = useNavigate();
 
   const [lists, setLists] = useState([]);
+  const [posterCache, setPosterCache] = useState({});
+  const [loading, setLoading] = useState(true);
+  const [showTypePicker, setShowTypePicker] = useState(false);
   const [showModal, setShowModal] = useState(false);
-  const [form, setForm] = useState({ name: '', description: '', tags: '', visibility: 'public', ranked: false });
-  const [tagInput, setTagInput] = useState('');
-  const [tagList, setTagList] = useState([]);
-  const [filmSearch, setFilmSearch] = useState('');
-  const [filmResults, setFilmResults] = useState([]);
-  const [selectedFilms, setSelectedFilms] = useState([]);
-  const [searchTimeout, setSearchTimeout] = useState(null);
+  const [editingList, setEditingList] = useState(null);
   const isOwn = !profileUser || (authUser && String(profileUser.id) === String(authUser.id));
 
   useEffect(() => {
     if (!user) return;
     fetch(`${API_BASE_URL}/api/lists/user/${user.id}`, {
       headers: token ? { 'Authorization': `Bearer ${token}` } : {}
-    }).then(r => r.ok ? r.json() : []).then(setLists).catch(() => {});
+    }).then(r => r.ok ? r.json() : []).then(async data => {
+      setLists(data);
+      setLoading(false);
+      const allIds = [...new Set(data.flatMap(l => (l.movieIds || []).slice(0, 5)))];
+      const cache = {};
+      await Promise.all(allIds.map(async id => {
+        try {
+          const r = await fetch(`${API_BASE_URL}/api/movies/${id}`);
+          if (r.ok) { const m = await r.json(); cache[id] = m.poster_path; }
+        } catch {}
+      }));
+      setPosterCache(cache);
+    }).catch(() => setLoading(false));
   }, [user, token]);
 
-  const openModal = () => {
-    if (!authUser) { navigate('/signin'); return; }
-    setForm({ name: '', description: '', tags: '', visibility: 'public', ranked: false });
-    setTagList([]); setTagInput(''); setSelectedFilms([]); setFilmSearch(''); setFilmResults([]);
-    setShowModal(true);
-  };
+  const handleCreated = (newList) => setLists(prev => [newList, ...prev]);
 
-  const handleTagKey = (e) => {
-    if ((e.key === 'Tab' || e.key === 'Enter') && tagInput.trim()) {
-      e.preventDefault();
-      if (!tagList.includes(tagInput.trim())) setTagList(prev => [...prev, tagInput.trim()]);
-      setTagInput('');
-    }
-  };
-
-  const handleFilmSearch = (val) => {
-    setFilmSearch(val);
-    clearTimeout(searchTimeout);
-    if (!val.trim()) { setFilmResults([]); return; }
-    setSearchTimeout(setTimeout(async () => {
-      try {
-        const r = await fetch(`${API_BASE_URL}/api/movies/search?query=${encodeURIComponent(val)}`);
-        const data = await r.json();
-        setFilmResults((data.results || data).slice(0, 6));
-      } catch {}
-    }, 350));
-  };
-
-  const addFilm = (film) => {
-    if (!selectedFilms.find(f => String(f.id) === String(film.id))) {
-      setSelectedFilms(prev => [...prev, film]);
-    }
-    setFilmSearch(''); setFilmResults([]);
-  };
-
-  const removeFilm = (id) => setSelectedFilms(prev => prev.filter(f => String(f.id) !== String(id)));
-
-  const handleSave = async () => {
-    if (!form.name.trim()) return;
-    const payload = {
-      name: form.name,
-      description: form.description,
-      tags: tagList.join(','),
-      visibility: form.visibility,
-      ranked: form.ranked,
-      movieIds: selectedFilms.map(f => String(f.id)),
-    };
-    try {
-      const r = await fetch(`${API_BASE_URL}/api/lists`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify(payload),
-      });
-      if (r.ok) {
-        const created = await r.json();
-        setLists(prev => [created, ...prev]);
-        setShowModal(false);
-      }
-    } catch {}
-  };
+  // Collect all unique tags across all lists
+  const allTags = [...new Set(
+    lists.flatMap(l => (l.tags || '').split(',').map(t => t.trim()).filter(Boolean))
+  )].sort();
 
   return (
     <div className="tab-content">
-      {/* Hero banner */}
-      <div className="lists-hero">
-        <p className="lists-hero-text">Collect, curate, and share. Lists are the perfect way to group films.</p>
-        {isOwn && (
-          <button className="lists-start-btn" onClick={openModal}>Start your own list</button>
-        )}
-      </div>
-
-      {lists.length > 0 && (
-        <>
-          <div className="lists-section-label">
-            {isOwn ? 'YOUR LISTS' : 'LISTS'}
-          </div>
-          <div className="lists-grid">
-            {lists.map(list => (
-              <div key={list.id} className="list-card">
-                <div className="list-card-title">{list.name}</div>
-                <div className="list-card-meta">{list.filmCount} film{list.filmCount !== 1 ? 's' : ''}</div>
-                {list.description && <div className="list-card-desc">{list.description}</div>}
-              </div>
-            ))}
-          </div>
-        </>
-      )}
-
-      {lists.length === 0 && !isOwn && (
-        <p className="lists-empty">No lists yet.</p>
-      )}
-
-      {/* New List Modal */}
-      {showModal && (
-        <div className="nl-overlay" onClick={() => setShowModal(false)}>
-          <div className="nl-modal" onClick={e => e.stopPropagation()}>
-            <h2 className="nl-title">New List</h2>
-            <div className="nl-body">
-              {/* Left column */}
-              <div className="nl-left">
-                <div className="nl-field">
-                  <label className="nl-label"><span className="nl-required">●</span> Name</label>
-                  <input className="nl-input" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} />
-                </div>
-                <div className="nl-field">
-                  <label className="nl-label">Tags <span className="nl-hint">Press Tab to complete, Enter to create</span></label>
-                  <div className="nl-tags-wrap">
-                    {tagList.map(t => (
-                      <span key={t} className="nl-tag">{t} <button onClick={() => setTagList(p => p.filter(x => x !== t))}>×</button></span>
+      <div className="pl-lists-layout">
+        {/* Left: list cards */}
+        <div className="pl-lists-main">
+          {loading ? null : lists.length === 0 ? (
+            <p className="lists-empty">{isOwn ? 'You have no lists yet.' : 'No lists yet.'}</p>
+          ) : (
+            <div className="pl-lists-grid">
+              {lists.map(list => (
+                <div key={list.id} className="pl-list-card" onClick={() => navigate(`/lists/${list.id}`)}>
+                  <div className="pl-list-posters">
+                    {(list.movieIds || []).slice(0, 5).map(mid => (
+                      posterCache[mid]
+                        ? <img key={mid} src={`https://image.tmdb.org/t/p/w154${posterCache[mid]}`} className="pl-list-poster-thumb" alt="" />
+                        : <div key={mid} className="pl-list-poster-placeholder" />
                     ))}
-                    <input
-                      className="nl-tag-input"
-                      placeholder="eg. top 10"
-                      value={tagInput}
-                      onChange={e => setTagInput(e.target.value)}
-                      onKeyDown={handleTagKey}
-                    />
+                    {Array.from({ length: Math.max(0, 5 - (list.movieIds || []).slice(0, 5).length) }).map((_, i) => (
+                      <div key={`e-${i}`} className="pl-list-poster-placeholder" />
+                    ))}
                   </div>
-                </div>
-                <div className="nl-field">
-                  <label className="nl-label">Who can view</label>
-                  <select className="nl-select" value={form.visibility} onChange={e => setForm(f => ({ ...f, visibility: e.target.value }))}>
-                    <option value="public">Anyone — Public list</option>
-                    <option value="private">Only me — Private list</option>
-                  </select>
-                </div>
-                <div className="nl-field nl-ranked-row">
-                  <input type="checkbox" id="nl-ranked" checked={form.ranked} onChange={e => setForm(f => ({ ...f, ranked: e.target.checked }))} />
-                  <label htmlFor="nl-ranked" className="nl-ranked-label">Ranked list</label>
-                  <span className="nl-hint">Show position for each film.</span>
-                </div>
-              </div>
-              {/* Right column */}
-              <div className="nl-right">
-                <div className="nl-field">
-                  <label className="nl-label">Description</label>
-                  <textarea className="nl-textarea" value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} />
-                </div>
-              </div>
-            </div>
-
-            {/* Film add bar */}
-            <div className="nl-film-bar">
-              <button className="nl-add-film-btn">ADD A FILM</button>
-              <div className="nl-film-search-wrap">
-                <input
-                  className="nl-film-input"
-                  placeholder="Enter name of film..."
-                  value={filmSearch}
-                  onChange={e => handleFilmSearch(e.target.value)}
-                />
-                {filmResults.length > 0 && (
-                  <div className="nl-film-dropdown">
-                    {filmResults.map(f => (
-                      <div key={f.id} className="nl-film-option" onClick={() => addFilm(f)}>
-                        {f.poster_path && <img src={`https://image.tmdb.org/t/p/w45${f.poster_path}`} alt="" />}
-                        <span>{f.title} {f.release_date ? `(${f.release_date.slice(0,4)})` : ''}</span>
+                  <div className="pl-list-info">
+                    <div className="pl-list-name-row">
+                      <span className="pl-list-name">{list.name}</span>
+                      {isOwn && (
+                        <button className="pl-list-edit-btn" title="Edit" onClick={e => { e.stopPropagation(); setEditingList(list); }}>
+                          <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                          </svg>
+                        </button>
+                      )}
+                    </div>
+                    <div className="pl-list-meta">
+                      {(list.movieIds || []).length} film{(list.movieIds || []).length !== 1 ? 's' : ''}
+                    </div>
+                    {list.description && <div className="pl-list-desc">{list.description}</div>}
+                    {list.tags && (
+                      <div className="pl-list-tags">
+                        {list.tags.split(',').filter(Boolean).map(t => (
+                          <span key={t} className="pl-list-tag">{t.trim()}</span>
+                        ))}
                       </div>
-                    ))}
+                    )}
                   </div>
-                )}
-              </div>
-              <div className="nl-actions">
-                <button className="nl-cancel-btn" onClick={() => setShowModal(false)}>CANCEL</button>
-                <button className="nl-save-btn" onClick={handleSave}>SAVE</button>
-              </div>
+                </div>
+              ))}
             </div>
+          )}
+        </div>
 
-            {/* Selected films */}
-            {selectedFilms.length === 0 ? (
-              <div className="nl-empty-films">
-                <p><strong>Your list is empty.</strong></p>
-                <p>Add films using the field above, or from the links on a film poster or page.</p>
+        {/* Right sidebar */}
+        <div className="pl-lists-sidebar">
+          {isOwn && (
+            <button className="pl-start-list-btn" onClick={() => setShowTypePicker(true)}>
+              Start a new list...
+            </button>
+          )}
+          {allTags.length > 0 && (
+            <div className="pl-tags-section">
+              <div className="pl-tags-header">
+                <span className="pl-tags-label">LIST TAGS</span>
+                <span className="pl-tags-count">{allTags.length}</span>
               </div>
-            ) : (
-              <div className="nl-selected-films">
-                {selectedFilms.map((f, i) => (
-                  <div key={f.id} className="nl-selected-film">
-                    {form.ranked && <span className="nl-rank">{i + 1}</span>}
-                    {f.poster_path && <img src={`https://image.tmdb.org/t/p/w45${f.poster_path}`} alt="" />}
-                    <span>{f.title}</span>
-                    <button className="nl-remove-film" onClick={() => removeFilm(f.id)}>×</button>
-                  </div>
+              <div className="pl-tags-cloud">
+                {allTags.map(tag => (
+                  <span key={tag} className="pl-tag-chip">{tag}</span>
                 ))}
               </div>
-            )}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {showTypePicker && (
+        <div className="nl-overlay" onClick={() => setShowTypePicker(false)}>
+          <div className="list-type-picker" onClick={e => e.stopPropagation()}>
+            <h2 className="list-type-title">What kind of list?</h2>
+            <div className="list-type-options">
+              <div className="list-type-card" onClick={() => { setShowTypePicker(false); setShowModal(true); }}>
+                <div className="list-type-icon">🎬</div>
+                <div className="list-type-name">Films</div>
+                <div className="list-type-desc">A list of movies</div>
+              </div>
+              <div className="list-type-card list-type-card--soon">
+                <div className="list-type-icon">🎭</div>
+                <div className="list-type-name">Cast / Characters</div>
+                <div className="list-type-desc">Coming soon</div>
+                <span className="list-type-badge">Soon</span>
+              </div>
+            </div>
           </div>
         </div>
+      )}
+
+      {showModal && (
+        <NewListModal token={token} onClose={() => setShowModal(false)} onCreated={handleCreated} />
+      )}
+
+      {editingList && (
+        <EditListModal
+          token={token}
+          list={editingList}
+          posterCache={posterCache}
+          onClose={() => setEditingList(null)}
+          onSaved={(updated) => {
+            setLists(prev => prev.map(l => l.id === updated.id ? updated : l));
+            setEditingList(null);
+          }}
+        />
       )}
     </div>
   );

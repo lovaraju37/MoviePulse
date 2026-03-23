@@ -36,7 +36,30 @@ public class ListController {
         m.put("movieIds", l.getMovieIds());
         m.put("createdAt", l.getCreatedAt().toString());
         m.put("filmCount", l.getMovieIds().size());
+        if (l.getUser() != null) {
+            m.put("authorId", l.getUser().getId());
+            m.put("authorName", l.getUser().getName());
+            m.put("authorPicture", l.getUser().getAvatarUrl() != null ? l.getUser().getAvatarUrl() : "");
+        }
         return m;
+    }
+
+    @GetMapping("/{id}")
+    @Transactional(readOnly = true)
+    public ResponseEntity<Map<String, Object>> getList(@PathVariable Long id) {
+        return movieListRepository.findById(id)
+                .map(l -> ResponseEntity.ok(toMap(l)))
+                .orElse(ResponseEntity.notFound().build());
+    }
+
+    @GetMapping("/all")
+    @Transactional(readOnly = true)
+    public ResponseEntity<List<Map<String, Object>>> getAllPublicLists() {
+        List<MovieList> lists = movieListRepository.findAll().stream()
+                .filter(MovieList::isPublic)
+                .sorted((a, b) -> b.getCreatedAt().compareTo(a.getCreatedAt()))
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(lists.stream().map(this::toMap).collect(Collectors.toList()));
     }
 
     @GetMapping("/user/{userId}")

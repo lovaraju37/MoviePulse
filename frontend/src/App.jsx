@@ -19,6 +19,8 @@ import { ProfileOverview, ProfileActivity, ProfileFilms, ProfileDiary, ProfileRe
 import FilmsPage from './components/FilmsPage'
 import FilmsCategoryPage from './components/FilmsCategoryPage'
 import MembersPage from './components/MembersPage'
+import ListsPage from './components/ListsPage'
+import ListDetailPage from './components/ListDetailPage'
 
 function AppContent() {
   const navigate = useNavigate();
@@ -54,6 +56,8 @@ function AppContent() {
       <Route path="/films" element={<FilmsPage />} />
       <Route path="/films/:category" element={<FilmsCategoryPage />} />
       <Route path="/members" element={<MembersPage />} />
+      <Route path="/lists" element={<ListsPage />} />
+      <Route path="/lists/:id" element={<ListDetailPage />} />
       <Route path="/user/:id" element={<UserProfile />}>
         <Route index element={<ProfileOverview />} />
         <Route path="activity" element={<ProfileActivity />} />
