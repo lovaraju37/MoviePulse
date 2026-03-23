@@ -397,7 +397,8 @@ const Navbar = () => {
                 <div className="logo" onClick={() => navigate(user ? '/home' : '/')} style={{ cursor: 'pointer' }}>MoviePulse</div>
                 <div className="nav-links">
                     <button className="nav-link" type="button" onClick={() => navigate('/films')}>Films</button>
-                    <button className="nav-link" type="button">Lists</button>
+                    <button className="nav-link" type="button" onClick={() => navigate('/lists')}>Lists</button>
+                    <button className="nav-link" type="button" onClick={() => navigate('/members')}>Members</button>
                 </div>
             </div>
 
@@ -412,9 +413,10 @@ const Navbar = () => {
                         >
                             <div className="user-trigger">
                                 <img
-                                    src={user?.picture || "https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp&f=y"}
+                                    src={user?.picture || `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.name || 'User')}&background=2c3440&color=9ab&size=128`}
                                     alt="User"
                                     className="user-avatar"
+                                    onError={e => { e.target.onerror = null; e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.name || 'User')}&background=2c3440&color=9ab&size=128`; }}
                                 />
                                 <span className="user-name">{user?.name || "User"}</span>
                                 <span className="dropdown-caret">▼</span>

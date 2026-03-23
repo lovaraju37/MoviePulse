@@ -80,14 +80,23 @@ public class MovieController {
         return ResponseEntity.ok(tmdbService.getTopRatedMovies());
     }
 
-    @GetMapping("/{id}")
-    public ResponseEntity<Map<String, Object>> getMovie(@PathVariable String id) {
-        Map<String, Object> movie = tmdbService.getMovie(id);
-        if (movie != null) {
-            return ResponseEntity.ok(movie);
-        } else {
-            return ResponseEntity.notFound().build();
-        }
+    @GetMapping("/filter/discover")
+    public ResponseEntity<Map<String, Object>> discoverMovies(
+            @RequestParam(required = false) String year,
+            @RequestParam(required = false) String genre,
+            @RequestParam(required = false) String language,
+            @RequestParam(required = false) String country,
+            @RequestParam(defaultValue = "1") int page) {
+        Map<String, Object> result = tmdbService.discoverMovies(year, genre, language, country, page);
+        if (result != null) return ResponseEntity.ok(result);
+        return ResponseEntity.ok(Map.of("results", List.of(), "total_pages", 0));
+    }
+
+    @GetMapping("/filter/genres")
+    public ResponseEntity<Map<String, Object>> getGenres() {
+        Map<String, Object> result = tmdbService.getGenres();
+        if (result != null) return ResponseEntity.ok(result);
+        return ResponseEntity.ok(Map.of("genres", List.of()));
     }
 
     @GetMapping("/search")
@@ -135,6 +144,16 @@ public class MovieController {
         Map<String, Object> credits = tmdbService.getPersonMovieCredits(id);
         if (credits != null) {
             return ResponseEntity.ok(credits);
+        } else {
+            return ResponseEntity.notFound().build();
+        }
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<Map<String, Object>> getMovie(@PathVariable String id) {
+        Map<String, Object> movie = tmdbService.getMovie(id);
+        if (movie != null) {
+            return ResponseEntity.ok(movie);
         } else {
             return ResponseEntity.notFound().build();
         }

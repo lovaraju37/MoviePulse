@@ -478,6 +478,23 @@
   border-radius: 20px;
   font-size: 0.9rem;
   border: 1px solid rgba(0, 224, 84, 0.3);
+  transition: background 0.15s;
+}
+
+.genre-tag:hover {
+  background: rgba(0, 224, 84, 0.22);
+}
+
+.filter-link {
+  color: #40bcf4;
+  cursor: pointer;
+  text-decoration: none;
+  transition: color 0.15s;
+}
+
+.filter-link:hover {
+  color: #fff;
+  text-decoration: underline;
 }
 
 /* New Runtime Section */

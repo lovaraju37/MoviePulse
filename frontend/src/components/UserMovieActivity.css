@@ -300,3 +300,210 @@
     vertical-align: middle;
     text-transform: uppercase;
 }
+
+/* ── Diary Tab (reused from ProfileTabs) ── */
+.diary-tab { padding: 0; }
+
+.diary-header-row,
+.diary-row {
+  display: grid;
+  grid-template-columns: 80px 50px 80px 120px 50px 60px 60px 50px;
+  align-items: center;
+  padding: 0 8px;
+  gap: 0;
+}
+
+.diary-header-row {
+  border-bottom: 1px solid #1e2a38;
+  padding-top: 8px;
+  padding-bottom: 8px;
+}
+
+.diary-header-row span {
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: #475569;
+  font-weight: 600;
+}
+
+.diary-row {
+  border-bottom: 1px solid #111820;
+  min-height: 56px;
+  transition: background 0.15s;
+}
+
+.diary-row:hover { background: #111820; }
+
+.diary-month-badge {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: #1e2a38;
+  border-radius: 6px;
+  padding: 6px 8px;
+  width: 52px;
+  line-height: 1;
+}
+
+.diary-month-name {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: #94a3b8;
+  letter-spacing: 0.05em;
+}
+
+.diary-month-year {
+  font-size: 0.65rem;
+  color: #475569;
+  margin-top: 2px;
+}
+
+.diary-day-num {
+  font-size: 1.4rem;
+  font-weight: 300;
+  color: #64748b;
+}
+
+.diary-year { font-size: 0.85rem; color: #475569; }
+
+.diary-stars {
+  display: inline-flex;
+  align-items: center;
+  gap: 1px;
+}
+
+.diary-rewatch-dot { font-size: 1rem; color: #40bcf4; }
+.diary-review-icon { font-size: 1rem; color: #94a3b8; }
+
+.diary-edit-btn {
+  background: none;
+  border: none;
+  color: #475569;
+  cursor: pointer;
+  font-size: 1rem;
+  padding: 4px;
+  transition: color 0.15s;
+}
+
+.diary-edit-btn:hover { color: #94a3b8; }
+
+.diary-col-month { display: flex; align-items: center; }
+.diary-col-day   { display: flex; align-items: center; justify-content: center; }
+.diary-col-released { display: flex; align-items: center; }
+.diary-col-rating   { display: flex; align-items: center; }
+.diary-col-like     { display: flex; align-items: center; justify-content: center; }
+.diary-col-rewatch  { display: flex; align-items: center; justify-content: center; }
+.diary-col-review   { display: flex; align-items: center; justify-content: center; }
+.diary-col-edit     { display: flex; align-items: center; justify-content: center; }
+
+/* ── View mode dropdown ── */
+.activity-view-btn {
+  background: none;
+  border: 1px solid #334155;
+  color: #9ab;
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  padding: 4px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+.activity-view-btn:hover { color: #fff; border-color: #64748b; }
+
+.activity-view-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  background: #2d3748;
+  border-radius: 6px;
+  min-width: 180px;
+  z-index: 200;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.6);
+  overflow: hidden;
+}
+
+.activity-view-option {
+  padding: 10px 16px;
+  font-size: 0.88rem;
+  color: #cbd5e1;
+  cursor: pointer;
+  transition: background 0.12s;
+}
+.activity-view-option:hover { background: #374151; }
+.activity-view-option.active { color: #fff; font-weight: 600; }
+
+/* ── Friends activity view ── */
+.friends-activity-section { padding-top: 8px; }
+
+.friends-activity-header {
+  margin-bottom: 4px;
+}
+
+.friends-activity-title {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: #64748b;
+  text-transform: uppercase;
+}
+
+.friends-activity-cols {
+  display: grid;
+  grid-template-columns: 1fr 140px 50px 50px;
+  padding: 6px 8px;
+  border-bottom: 1px solid #1e2a38;
+  gap: 0;
+}
+
+.friends-activity-cols span {
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: #475569;
+  font-weight: 600;
+}
+
+.friends-activity-row {
+  display: grid;
+  grid-template-columns: 1fr 140px 50px 50px;
+  align-items: center;
+  padding: 10px 8px;
+  border-bottom: 1px solid #111820;
+  cursor: pointer;
+  transition: background 0.15s;
+  gap: 0;
+}
+.friends-activity-row:hover { background: #111820; }
+
+.fac-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.fac-name {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.fac-username {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #e2e8f0;
+}
+
+.fac-sub {
+  font-size: 0.72rem;
+  color: #475569;
+  margin-top: 1px;
+}
+
+.fac-rating { display: flex; align-items: center; }
+.fac-like   { display: flex; align-items: center; justify-content: center; }
+.fac-review { display: flex; align-items: center; justify-content: center; }

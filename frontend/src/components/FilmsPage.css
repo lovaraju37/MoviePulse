@@ -56,3 +56,38 @@
 .movie-card-container {
     width: 100%;
 }
+
+.discover-pagination {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 16px;
+    margin-top: 32px;
+    padding: 16px 0;
+}
+
+.page-btn {
+    background: #2c3440;
+    border: 1px solid #445566;
+    color: #9ab;
+    padding: 8px 18px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    transition: background 0.15s, color 0.15s;
+}
+
+.page-btn:hover:not(:disabled) {
+    background: #374151;
+    color: #fff;
+}
+
+.page-btn:disabled {
+    opacity: 0.35;
+    cursor: default;
+}
+
+.page-info {
+    color: #9ab;
+    font-size: 0.85rem;
+}

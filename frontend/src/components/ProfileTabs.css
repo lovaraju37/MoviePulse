@@ -690,3 +690,231 @@
   color: #64748b;
   padding: 8px 18px 0;
 }
+
+/* ── Lists Page ─────────────────────────────────────────────────────────────── */
+.lists-hero {
+  text-align: center;
+  padding: 40px 20px 32px;
+  border-bottom: 1px solid #2c3440;
+  margin-bottom: 28px;
+}
+.lists-hero-text {
+  font-size: 1.2rem;
+  color: #9ab;
+  font-weight: 300;
+  margin: 0 0 16px;
+}
+.lists-start-btn {
+  background: transparent;
+  border: 1px solid #445566;
+  color: #9ab;
+  padding: 8px 20px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: border-color 0.2s, color 0.2s;
+}
+.lists-start-btn:hover { border-color: #00e054; color: #00e054; }
+
+.lists-section-label {
+  font-size: 0.72rem;
+  color: #64748b;
+  letter-spacing: 0.1em;
+  font-weight: 600;
+  text-transform: uppercase;
+  margin-bottom: 16px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #2c3440;
+}
+.lists-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.list-card {
+  background: #1e2530;
+  border-radius: 6px;
+  padding: 14px 18px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.list-card:hover { background: #252d3a; }
+.list-card-title { font-size: 1rem; font-weight: 600; color: #fff; margin-bottom: 4px; }
+.list-card-meta { font-size: 0.78rem; color: #64748b; margin-bottom: 4px; }
+.list-card-desc { font-size: 0.85rem; color: #9ab; }
+.lists-empty { color: #64748b; text-align: center; padding: 40px 0; }
+
+/* ── New List Modal ──────────────────────────────────────────────────────────── */
+.nl-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.75);
+  z-index: 1000;
+  display: flex; align-items: flex-start; justify-content: center;
+  padding: 40px 16px;
+  overflow-y: auto;
+}
+.nl-modal {
+  background: #1e2530;
+  border-radius: 8px;
+  width: 100%;
+  max-width: 900px;
+  padding: 28px 28px 0;
+  color: #fff;
+}
+.nl-title {
+  font-size: 1.5rem;
+  font-weight: 300;
+  color: #9ab;
+  margin: 0 0 20px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #2c3440;
+}
+.nl-body {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  margin-bottom: 20px;
+}
+.nl-left, .nl-right { display: flex; flex-direction: column; gap: 16px; }
+.nl-field { display: flex; flex-direction: column; gap: 6px; }
+.nl-label { font-size: 0.82rem; color: #9ab; font-weight: 600; display: flex; align-items: center; gap: 6px; }
+.nl-required { color: #00e054; font-size: 0.6rem; }
+.nl-hint { font-size: 0.75rem; color: #64748b; font-weight: 400; margin-left: auto; }
+.nl-input, .nl-select {
+  background: #14181c;
+  border: 1px solid #2c3440;
+  border-radius: 4px;
+  color: #fff;
+  padding: 8px 10px;
+  font-size: 0.9rem;
+  outline: none;
+  transition: border-color 0.2s;
+}
+.nl-input:focus, .nl-select:focus { border-color: #445566; }
+.nl-select { appearance: auto; }
+.nl-textarea {
+  background: #14181c;
+  border: 1px solid #2c3440;
+  border-radius: 4px;
+  color: #fff;
+  padding: 8px 10px;
+  font-size: 0.9rem;
+  outline: none;
+  resize: vertical;
+  min-height: 140px;
+  width: 100%;
+  box-sizing: border-box;
+  transition: border-color 0.2s;
+}
+.nl-textarea:focus { border-color: #445566; }
+.nl-tags-wrap {
+  background: #14181c;
+  border: 1px solid #2c3440;
+  border-radius: 4px;
+  padding: 6px 8px;
+  display: flex; flex-wrap: wrap; gap: 6px; align-items: center;
+  min-height: 38px;
+}
+.nl-tag {
+  background: #2c3440;
+  color: #9ab;
+  border-radius: 3px;
+  padding: 2px 8px;
+  font-size: 0.8rem;
+  display: flex; align-items: center; gap: 4px;
+}
+.nl-tag button { background: none; border: none; color: #9ab; cursor: pointer; padding: 0; font-size: 1rem; line-height: 1; }
+.nl-tag-input { background: none; border: none; color: #fff; outline: none; font-size: 0.88rem; flex: 1; min-width: 80px; }
+.nl-ranked-row { flex-direction: row; align-items: center; gap: 10px; }
+.nl-ranked-label { font-size: 0.88rem; color: #fff; font-weight: 600; }
+
+/* Film bar */
+.nl-film-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #14181c;
+  padding: 10px 14px;
+  border-top: 1px solid #2c3440;
+  flex-wrap: wrap;
+}
+.nl-add-film-btn {
+  background: #00e054;
+  color: #14181c;
+  border: none;
+  border-radius: 3px;
+  padding: 7px 14px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.nl-film-search-wrap { position: relative; flex: 1; min-width: 160px; }
+.nl-film-input {
+  background: #1e2530;
+  border: 1px solid #2c3440;
+  border-radius: 4px;
+  color: #fff;
+  padding: 7px 10px;
+  font-size: 0.88rem;
+  outline: none;
+  width: 100%;
+  box-sizing: border-box;
+}
+.nl-film-dropdown {
+  position: absolute;
+  top: 100%; left: 0; right: 0;
+  background: #1e2530;
+  border: 1px solid #2c3440;
+  border-radius: 4px;
+  z-index: 10;
+  max-height: 220px;
+  overflow-y: auto;
+}
+.nl-film-option {
+  display: flex; align-items: center; gap: 8px;
+  padding: 7px 10px;
+  cursor: pointer;
+  font-size: 0.88rem;
+  color: #ccc;
+  transition: background 0.15s;
+}
+.nl-film-option:hover { background: #252d3a; }
+.nl-film-option img { width: 30px; height: 45px; object-fit: cover; border-radius: 2px; }
+.nl-actions { display: flex; gap: 8px; margin-left: auto; }
+.nl-cancel-btn {
+  background: #2c3440; border: none; color: #9ab;
+  padding: 7px 16px; border-radius: 3px; font-size: 0.78rem; font-weight: 700; cursor: pointer;
+}
+.nl-cancel-btn:hover { background: #3a4455; }
+.nl-save-btn {
+  background: #00e054; border: none; color: #14181c;
+  padding: 7px 16px; border-radius: 3px; font-size: 0.78rem; font-weight: 700; cursor: pointer;
+}
+.nl-save-btn:hover { background: #00c44a; }
+
+.nl-empty-films {
+  text-align: center;
+  padding: 40px 20px;
+  color: #64748b;
+  border-top: 1px solid #2c3440;
+}
+.nl-empty-films p { margin: 4px 0; }
+.nl-empty-films strong { color: #9ab; }
+
+.nl-selected-films {
+  border-top: 1px solid #2c3440;
+  padding: 12px 0;
+}
+.nl-selected-film {
+  display: flex; align-items: center; gap: 10px;
+  padding: 6px 14px;
+  font-size: 0.9rem; color: #ccc;
+}
+.nl-selected-film img { width: 30px; height: 45px; object-fit: cover; border-radius: 2px; }
+.nl-rank { color: #64748b; font-size: 0.8rem; width: 20px; text-align: right; }
+.nl-remove-film {
+  margin-left: auto; background: none; border: none;
+  color: #64748b; font-size: 1.1rem; cursor: pointer; line-height: 1;
+}
+.nl-remove-film:hover { color: #e05; }

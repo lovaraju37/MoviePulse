@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
-import { Eye, Heart, MoreHorizontal } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { Eye, Heart, MoreHorizontal, Star } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import ReviewModal from './ReviewModal';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
 const IMAGE_BASE_URL = 'https://image.tmdb.org/t/p/w500';
@@ -135,6 +136,7 @@ const MoviePoster = ({
                 if (isLiked) {
                     await fetch(`${API_BASE_URL}/api/likes/${movie.id}`, { method: 'DELETE', headers });
                     setInternalIsLiked(false);
+                    window.dispatchEvent(new CustomEvent('movieLikeChanged', { detail: { movieId: movie.id, isLiked: false } }));
                 } else {
                     await fetch(`${API_BASE_URL}/api/likes`, { 
                         method: 'POST', 
@@ -143,11 +145,12 @@ const MoviePoster = ({
                             movieId: movie.id,
                             title: movie.title,
                             posterPath: movie.poster_path,
-                            voteAverage: movie.vote_average, // Might be undefined if not in movie object
+                            voteAverage: movie.vote_average,
                             releaseDate: movie.release_date
                         })
                     });
                     setInternalIsLiked(true);
+                    window.dispatchEvent(new CustomEvent('movieLikeChanged', { detail: { movieId: movie.id, isLiked: true } }));
                 }
             }
         } catch (err) {
@@ -201,10 +204,76 @@ const MoviePoster = ({
         }
     };
 
+    const [showMenu, setShowMenu] = useState(false);
+    const [menuRating, setMenuRating] = useState(0);
+    const [menuHoverRating, setMenuHoverRating] = useState(0);
+    const [showReviewModal, setShowReviewModal] = useState(false);
+    const [reviewModalInitialData, setReviewModalInitialData] = useState({});
+    const [internalIsWatchlisted, setInternalIsWatchlisted] = useState(false);
+    const [existingReview, setExistingReview] = useState(null); // fetched when menu opens
+    const [showReviewSubmenu, setShowReviewSubmenu] = useState(false);
+    const menuRef = useRef(null);
+
+    useEffect(() => {
+        const handler = (e) => { if (menuRef.current && !menuRef.current.contains(e.target)) setShowMenu(false); };
+        document.addEventListener('mousedown', handler);
+        return () => document.removeEventListener('mousedown', handler);
+    }, []);
+
+    // Fetch existing rating + watchlist status when menu opens
+    useEffect(() => {
+        if (!showMenu || !user || review) return;
+        const token = localStorage.getItem('token');
+        const headers = { 'Authorization': `Bearer ${token}` };
+        Promise.all([
+            fetch(`${API_BASE_URL}/api/reviews/movie/${movie.id}/check`, { headers }).then(r => r.ok ? r.json() : null).catch(() => null),
+            fetch(`${API_BASE_URL}/api/watchlist/${movie.id}/check`, { headers }).then(r => r.ok ? r.json() : null).catch(() => null),
+        ]).then(([reviewData, watchlistData]) => {
+            if (reviewData?.rating) setMenuRating(reviewData.rating);
+            if (watchlistData?.inWatchlist !== undefined) setInternalIsWatchlisted(watchlistData.inWatchlist);
+            setExistingReview(reviewData || null);
+        });
+    }, [showMenu]);
+
     const handleMore = (e) => {
         e.stopPropagation();
-        // Placeholder for more options
-        console.log("More options clicked");
+        setShowReviewSubmenu(false);
+        setShowMenu(prev => !prev);
+    };
+
+    const handleMenuRate = async (rating) => {
+        if (!user) return;
+        setMenuRating(rating);
+        try {
+            const token = localStorage.getItem('token');
+            const headers = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` };
+            await fetch(`${API_BASE_URL}/api/reviews`, {
+                method: 'POST', headers,
+                body: JSON.stringify({ movieId: movie.id, movieTitle: movie.title, posterPath: movie.poster_path, rating, content: '' })
+            });
+        } catch (err) { console.error(err); }
+    };
+
+    const handleWatchlistToggle = async (e) => {
+        e.stopPropagation();
+        if (!user) return;
+        const token = localStorage.getItem('token');
+        const headers = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` };
+        try {
+            if (internalIsWatchlisted) {
+                await fetch(`${API_BASE_URL}/api/watchlist/${movie.id}`, { method: 'DELETE', headers });
+                setInternalIsWatchlisted(false);
+                window.dispatchEvent(new CustomEvent('watchlistChanged', { detail: { movieId: movie.id, inWatchlist: false } }));
+            } else {
+                await fetch(`${API_BASE_URL}/api/watchlist`, {
+                    method: 'POST', headers,
+                    body: JSON.stringify({ movieId: movie.id, title: movie.title, posterPath: movie.poster_path, voteAverage: movie.vote_average, releaseDate: movie.release_date })
+                });
+                setInternalIsWatchlisted(true);
+                window.dispatchEvent(new CustomEvent('watchlistChanged', { detail: { movieId: movie.id, inWatchlist: true } }));
+            }
+        } catch (err) { console.error(err); }
+        setShowMenu(false);
     };
 
     const posterUrl = (() => {
@@ -221,7 +290,7 @@ const MoviePoster = ({
         return 'https://via.placeholder.com/150x225';
     })();
 
-    const movieTitle = movie.title || movie.movieTitle || 'Unknown Title';
+    const movieTitle = movie.title || movie.movieTitle || movie.name || '';
     
     // Determine heart color
     // If review: Orange (#FF8000) if liked, White if not
@@ -255,7 +324,7 @@ const MoviePoster = ({
             onMouseLeave={() => setIsHovered(false)}
         >
             {/* Title Tooltip */}
-            {isHovered && showTitleTooltip && (
+            {isHovered && showTitleTooltip && movieTitle && (
                 <div style={{
                     position: 'absolute',
                     top: '-40px',
@@ -330,6 +399,141 @@ const MoviePoster = ({
                         onClick={handleMore}
                     />
                 </div>
+            )}
+
+            {/* Three-dot menu */}
+            {showMenu && user && (
+                <div
+                    ref={menuRef}
+                    onClick={e => e.stopPropagation()}
+                    style={{
+                        position: 'absolute',
+                        bottom: '44px',
+                        right: 0,
+                        background: '#2d3748',
+                        borderRadius: '8px',
+                        minWidth: '200px',
+                        zIndex: 200,
+                        boxShadow: '0 8px 32px rgba(0,0,0,0.7)',
+                        overflow: 'hidden',
+                    }}
+                >
+                    {/* Quick rate stars */}
+                    <div style={{ display: 'flex', justifyContent: 'center', gap: '4px', padding: '12px 16px 8px', borderBottom: '1px solid #374151' }}>
+                        {[1,2,3,4,5].map(s => (
+                            <Star
+                                key={s}
+                                size={22}
+                                fill={(menuHoverRating || menuRating) >= s ? '#00e054' : 'none'}
+                                color={(menuHoverRating || menuRating) >= s ? '#00e054' : '#64748b'}
+                                style={{ cursor: 'pointer', transition: 'color 0.1s' }}
+                                onMouseEnter={() => setMenuHoverRating(s)}
+                                onMouseLeave={() => setMenuHoverRating(0)}
+                                onClick={() => handleMenuRate(s)}
+                            />
+                        ))}
+                    </div>
+                    {!showReviewSubmenu ? (
+                      <>
+                        {[
+                            { label: 'Show your activity', action: () => { navigate(`/movie/${movie.id}/activity`); setShowMenu(false); } },
+                            { label: 'Review or log film...', action: () => setShowReviewSubmenu(true), hasSubmenu: true },
+                            { label: internalIsWatchlisted ? '✓ In watchlist · Remove' : 'Add to watchlist', action: handleWatchlistToggle },
+                            { label: 'Add to lists...', action: () => setShowMenu(false) },
+                            { label: 'Show in lists', action: () => setShowMenu(false) },
+                            { label: 'Where to watch', action: () => setShowMenu(false) },
+                        ].map(item => (
+                            <div
+                                key={item.label}
+                                onClick={item.action}
+                                style={{
+                                    padding: '10px 18px',
+                                    fontSize: '0.88rem',
+                                    color: '#cbd5e1',
+                                    cursor: 'pointer',
+                                    transition: 'background 0.12s',
+                                    display: 'flex',
+                                    justifyContent: 'space-between',
+                                    alignItems: 'center',
+                                }}
+                                onMouseEnter={e => e.currentTarget.style.background = '#374151'}
+                                onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                            >
+                                {item.label}
+                                {item.hasSubmenu && <span style={{ color: '#64748b', fontSize: '0.75rem' }}>›</span>}
+                            </div>
+                        ))}
+                      </>
+                    ) : (
+                      <>
+                        {/* Back header */}
+                        <div
+                            onClick={() => setShowReviewSubmenu(false)}
+                            style={{
+                                padding: '10px 18px',
+                                fontSize: '0.8rem',
+                                color: '#64748b',
+                                cursor: 'pointer',
+                                borderBottom: '1px solid #374151',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '6px',
+                            }}
+                            onMouseEnter={e => e.currentTarget.style.background = '#374151'}
+                            onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                        >
+                            ‹ Back
+                        </div>
+                        {existingReview?.hasReview && (
+                            <div
+                                onClick={() => {
+                                    setReviewModalInitialData({
+                                        isWatched: true,
+                                        rating: existingReview.rating || 0,
+                                        isRewatch: existingReview.review?.rewatch || false,
+                                        isLiked: existingReview.isLiked || false,
+                                        review: existingReview.review?.content || '',
+                                        containsSpoiler: existingReview.review?.containsSpoiler || false,
+                                        watchedDate: existingReview.review?.watchedDate
+                                            ? existingReview.review.watchedDate.substring(0, 10)
+                                            : undefined,
+                                    });
+                                    setShowReviewModal(true);
+                                    setShowMenu(false);
+                                    setShowReviewSubmenu(false);
+                                }}
+                                style={{ padding: '12px 18px', fontSize: '0.88rem', color: '#cbd5e1', cursor: 'pointer' }}
+                                onMouseEnter={e => e.currentTarget.style.background = '#374151'}
+                                onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                            >
+                                Edit existing review
+                            </div>
+                        )}
+                        <div
+                            onClick={() => {
+                                setReviewModalInitialData({ isWatched: true });
+                                setShowReviewModal(true);
+                                setShowMenu(false);
+                                setShowReviewSubmenu(false);
+                            }}
+                            style={{ padding: '12px 18px', fontSize: '0.88rem', color: '#cbd5e1', cursor: 'pointer' }}
+                            onMouseEnter={e => e.currentTarget.style.background = '#374151'}
+                            onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                        >
+                            Log another review
+                        </div>
+                      </>
+                    )}
+                </div>
+            )}
+
+            {showReviewModal && (
+                <ReviewModal
+                    movie={movie}
+                    onClose={() => setShowReviewModal(false)}
+                    onSave={() => setShowReviewModal(false)}
+                    initialData={reviewModalInitialData}
+                />
             )}
         </div>
     );

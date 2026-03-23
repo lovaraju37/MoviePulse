@@ -18,6 +18,7 @@ import { AuthProvider, useAuth } from './context/AuthContext'
 import { ProfileOverview, ProfileActivity, ProfileFilms, ProfileDiary, ProfileReviews, ProfileWatchlist, ProfileLists, ProfileLikes } from './components/ProfileTabs'
 import FilmsPage from './components/FilmsPage'
 import FilmsCategoryPage from './components/FilmsCategoryPage'
+import MembersPage from './components/MembersPage'
 
 function AppContent() {
   const navigate = useNavigate();
@@ -52,6 +53,7 @@ function AppContent() {
       <Route path="/home" element={<HomePage onNavigate={handleNavigate} user={user} />} />
       <Route path="/films" element={<FilmsPage />} />
       <Route path="/films/:category" element={<FilmsCategoryPage />} />
+      <Route path="/members" element={<MembersPage />} />
       <Route path="/user/:id" element={<UserProfile />}>
         <Route index element={<ProfileOverview />} />
         <Route path="activity" element={<ProfileActivity />} />

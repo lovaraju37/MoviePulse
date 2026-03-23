@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+﻿import React, { useEffect, useState } from 'react';
 import Navbar from './Navbar';
 import { useAuth } from '../context/AuthContext';
 import { Star, Heart, MessageSquare, RefreshCw, AlignLeft } from 'lucide-react';
@@ -46,7 +46,7 @@ const HomePage = () => {
             <main className="main-layout" style={{ paddingTop: '80px', maxWidth: '950px', margin: '0 auto' }}>
                 <div style={{ marginBottom: '40px' }}>
                     <div style={{ marginBottom: '20px', color: '#99aabb', fontSize: '1.2rem' }}>
-                        Welcome back, <span style={{ color: '#fff', fontWeight: 'bold' }}>{user?.name}</span>. Here’s what your friends have been watching...
+                        Welcome back, <span style={{ color: '#fff', fontWeight: 'bold', cursor: 'pointer', textDecoration: 'underline', textDecorationColor: 'transparent' }} onMouseEnter={e => e.currentTarget.style.textDecorationColor='#fff'} onMouseLeave={e => e.currentTarget.style.textDecorationColor='transparent'} onClick={() => navigate('/profile')}>{user?.name}</span>. Here’s what your friends have been watching...
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px', borderBottom: '1px solid #445566', paddingBottom: '10px' }}>
                         <h2 style={{ fontSize: '0.9rem', color: '#99aabb', letterSpacing: '0.075em', fontWeight: 'normal', margin: 0 }}>NEW FROM FRIENDS</h2>

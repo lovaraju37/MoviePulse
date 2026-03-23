@@ -83,9 +83,10 @@ const UserProfile = () => {
             <div className="profile-left-col">
                 <div className="profile-avatar-section">
                   <img 
-                    src={profileUser.picture || "https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp&f=y"} 
+                    src={profileUser.picture || `https://ui-avatars.com/api/?name=${encodeURIComponent(profileUser.name || 'User')}&background=2c3440&color=9ab&size=128`} 
                     alt="Profile" 
                     className="profile-avatar-large"
+                    onError={e => { e.target.onerror = null; e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(profileUser.name || 'User')}&background=2c3440&color=9ab&size=128`; }}
                   />
                 </div>
                 

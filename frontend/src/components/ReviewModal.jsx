@@ -1,4 +1,5 @@
 import React, { useState, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { X, Star, Heart } from 'lucide-react';
 import MoviePoster from './MoviePoster';
 import './ReviewModal.css';
@@ -7,7 +8,7 @@ const IMAGE_BASE_URL = 'https://image.tmdb.org/t/p/w500';
 
 const ReviewModal = (props) => {
   if (!props.movie) return null;
-  return <ReviewForm {...props} />;
+  return createPortal(<ReviewForm {...props} />, document.body);
 };
 
 const ReviewForm = ({ onClose, movie, onSave, initialData, onLikeChange }) => {

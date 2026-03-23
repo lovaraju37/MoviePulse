@@ -134,6 +134,27 @@ public class TmdbService {
         return fetchTmdbMap(url, "Error fetching person credits from TMDB: ");
     }
 
+    public Map<String, Object> discoverMovies(String year, String genreId, String language, String country, int page) {
+        UriComponentsBuilder builder = UriComponentsBuilder.fromUriString(apiUrl + "/discover/movie")
+                .queryParam("api_key", apiKey)
+                .queryParam("sort_by", "popularity.desc")
+                .queryParam("page", page);
+
+        if (year != null && !year.isBlank()) builder.queryParam("primary_release_year", year);
+        if (genreId != null && !genreId.isBlank()) builder.queryParam("with_genres", genreId);
+        if (language != null && !language.isBlank()) builder.queryParam("with_original_language", language);
+        if (country != null && !country.isBlank()) builder.queryParam("with_origin_country", country);
+
+        return fetchTmdbMap(builder.toUriString(), "Error discovering movies from TMDB: ");
+    }
+
+    public Map<String, Object> getGenres() {
+        String url = UriComponentsBuilder.fromUriString(apiUrl + "/genre/movie/list")
+                .queryParam("api_key", apiKey)
+                .toUriString();
+        return fetchTmdbMap(url, "Error fetching genres from TMDB: ");
+    }
+
     public static class TmdbResultsResponse {
         private List<Map<String, Object>> results;
 

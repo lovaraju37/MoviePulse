@@ -251,9 +251,10 @@ const Profile = ({ onNavigate }) => {
                 <label className="edit-label">Avatar</label>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
                   <img
-                    src={formData.picture || user.picture || "https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp&f=y"}
+                    src={formData.picture || user.picture || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name)}&background=2c3440&color=9ab&size=128`}
                     alt="avatar"
                     style={{ width: '56px', height: '56px', borderRadius: '50%', objectFit: 'cover', border: '2px solid #2d3748' }}
+                    onError={e => { e.target.onerror = null; e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name)}&background=2c3440&color=9ab&size=128`; }}
                   />
                   <label className="edit-upload-btn">
                     Change
@@ -401,13 +402,14 @@ const Profile = ({ onNavigate }) => {
                     <div className="profile-slim-header-top">
                       <div className="profile-slim-left">
                         <img 
-                          src={formData.picture || user.picture || "https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp&f=y"} 
+                          src={formData.picture || user.picture || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name)}&background=2c3440&color=9ab&size=128`} 
                           alt={user.name} 
-                          className="profile-slim-avatar" 
+                          className="profile-slim-avatar"
+                          onError={e => { e.target.onerror = null; e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name)}&background=2c3440&color=9ab&size=128`; }}
                         />
                         <div className="profile-slim-info">
                           <div className="profile-slim-name-row">
-                            <span className="profile-slim-username">{user.name}</span>
+                            <NavLink to="/profile" end className="profile-slim-username">{user.name}</NavLink>
                             <button className="edit-profile-btn" onClick={() => setIsEditing(true)}>Edit Profile</button>
                           </div>
                           {user.bio && <p className="profile-slim-bio">{user.bio}</p>}
@@ -451,11 +453,12 @@ const Profile = ({ onNavigate }) => {
                   <div className="profile-slim-compact-row">
                     <div className="profile-slim-compact-left">
                       <img 
-                        src={formData.picture || user.picture || "https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp&f=y"} 
+                        src={formData.picture || user.picture || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name)}&background=2c3440&color=9ab&size=128`} 
                         alt={user.name} 
-                        className="profile-slim-avatar profile-slim-avatar--sm" 
+                        className="profile-slim-avatar profile-slim-avatar--sm"
+                        onError={e => { e.target.onerror = null; e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name)}&background=2c3440&color=9ab&size=128`; }}
                       />
-                      <span className="profile-slim-username">{user.name}</span>
+                      <NavLink to="/profile" end className="profile-slim-username">{user.name}</NavLink>
                     </div>
                     <div className="profile-slim-nav profile-slim-nav--inline">
                       <NavLink to="/profile" end className={({ isActive }) => `profile-slim-nav-item ${isActive ? 'active' : ''}`}>Profile</NavLink>

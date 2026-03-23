@@ -130,6 +130,17 @@ const MovieDetails = () => {
       }
   }, [user, movie]);
 
+  // Sync watchlist state when changed from MoviePoster three-dot menu
+  useEffect(() => {
+      const handler = (e) => {
+          if (movie && String(e.detail.movieId) === String(movie.id)) {
+              setInWatchlist(e.detail.inWatchlist);
+          }
+      };
+      window.addEventListener('watchlistChanged', handler);
+      return () => window.removeEventListener('watchlistChanged', handler);
+  }, [movie]);
+
   const toggleWatched = () => {
     if (!user) {
         navigate('/signin');
@@ -563,7 +574,7 @@ const MovieDetails = () => {
               <h1 className="movie-title-large">
                 <span className="title-text">{movie.title}</span>
                 <span className="meta-group">
-                  <span className="release-year-link">{releaseYear}</span>
+                  <span className="release-year-link" style={{ cursor: releaseYear ? 'pointer' : 'default' }} onClick={() => releaseYear && navigate(`/films/discover?year=${releaseYear}`)}>{releaseYear}</span>
                   {directorObj && <span className="director-wrapper">Directed by <span className="director-link" onClick={() => navigate(`/person/${directorObj.id}`, { state: { department: 'Directing' } })} style={{cursor: 'pointer'}}>{directorObj.name}</span></span>}
                 </span>
               </h1>
@@ -861,19 +872,43 @@ const MovieDetails = () => {
                    <div className="detail-row">
                       <span className="detail-label">Country</span>
                       <span className="detail-value">
-                        {movie.production_countries?.map(c => c.name).join(', ') || 'N/A'}
+                        {movie.production_countries?.length > 0
+                          ? movie.production_countries.map((c, i) => (
+                              <span key={c.iso_3166_1}>
+                                {i > 0 && ', '}
+                                <span
+                                  className="filter-link"
+                                  onClick={() => navigate(`/films/discover?country=${c.iso_3166_1}&countryName=${encodeURIComponent(c.name)}`)}
+                                >{c.name}</span>
+                              </span>
+                            ))
+                          : 'N/A'}
                       </span>
                    </div>
                    <div className="detail-row">
                       <span className="detail-label">Primary Language</span>
                       <span className="detail-value">
-                        {movie.original_language ? new Intl.DisplayNames(['en'], { type: 'language' }).of(movie.original_language) : 'N/A'}
+                        {movie.original_language
+                          ? <span className="filter-link" onClick={() => navigate(`/films/discover?language=${movie.original_language}&languageName=${encodeURIComponent(new Intl.DisplayNames(['en'], { type: 'language' }).of(movie.original_language))}`)}>
+                              {new Intl.DisplayNames(['en'], { type: 'language' }).of(movie.original_language)}
+                            </span>
+                          : 'N/A'}
                       </span>
                    </div>
                    <div className="detail-row">
                       <span className="detail-label">Spoken Languages</span>
                       <span className="detail-value">
-                        {movie.spoken_languages?.map(l => l.english_name).join(', ') || 'N/A'}
+                        {movie.spoken_languages?.length > 0
+                          ? movie.spoken_languages.map((l, i) => (
+                              <span key={l.iso_639_1}>
+                                {i > 0 && ', '}
+                                <span
+                                  className="filter-link"
+                                  onClick={() => navigate(`/films/discover?language=${l.iso_639_1}&languageName=${encodeURIComponent(l.english_name)}`)}
+                                >{l.english_name}</span>
+                              </span>
+                            ))
+                          : 'N/A'}
                       </span>
                    </div>
                 </div>
@@ -882,7 +917,12 @@ const MovieDetails = () => {
               {activeTab === 'GENRES' && (
                 <div className="genres-list">
                   {movie.genres?.map(genre => (
-                    <span key={genre.id} className="genre-tag">{genre.name}</span>
+                    <span
+                      key={genre.id}
+                      className="genre-tag"
+                      style={{ cursor: 'pointer' }}
+                      onClick={() => navigate(`/films/discover?genre=${genre.id}&genreName=${encodeURIComponent(genre.name)}`)}
+                    >{genre.name}</span>
                   ))}
                 </div>
               )}

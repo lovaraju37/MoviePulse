@@ -13,6 +13,13 @@ public class MovieList {
     private String name;
     private String description;
     private boolean isPublic = true;
+    private String tags;
+    private boolean ranked = false;
+
+    @ElementCollection
+    @CollectionTable(name = "movie_list_films", joinColumns = @JoinColumn(name = "list_id"))
+    @Column(name = "movie_id")
+    private java.util.List<String> movieIds = new java.util.ArrayList<>();
     
     private LocalDateTime createdAt = LocalDateTime.now();
 
@@ -30,6 +37,12 @@ public class MovieList {
     public void setDescription(String description) { this.description = description; }
     public boolean isPublic() { return isPublic; }
     public void setPublic(boolean isPublic) { this.isPublic = isPublic; }
+    public String getTags() { return tags; }
+    public void setTags(String tags) { this.tags = tags; }
+    public boolean isRanked() { return ranked; }
+    public void setRanked(boolean ranked) { this.ranked = ranked; }
+    public java.util.List<String> getMovieIds() { return movieIds; }
+    public void setMovieIds(java.util.List<String> movieIds) { this.movieIds = movieIds; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
     public User getUser() { return user; }

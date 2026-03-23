@@ -54,6 +54,25 @@ public class UserController {
         return ResponseEntity.ok(result);
     }
 
+    @GetMapping("/all")
+    @Transactional(readOnly = true)
+    public ResponseEntity<List<Map<String, Object>>> getAllUsers(Authentication authentication) {
+        List<User> users = userRepository.findAll();
+        List<Map<String, Object>> result = users.stream().map(u -> {
+            long filmsCount = reviewRepository.countByUserId(u.getId());
+            long reviewsCount = reviewRepository.countByUserIdAndContentIsNotNull(u.getId());
+            Map<String, Object> m = new java.util.HashMap<>();
+            m.put("id", u.getId());
+            m.put("name", u.getName());
+            m.put("picture", u.getAvatarUrl() != null ? u.getAvatarUrl() : "");
+            m.put("filmsCount", filmsCount);
+            m.put("reviewsCount", reviewsCount);
+            m.put("followersCount", u.getFollowers().size());
+            return m;
+        }).collect(Collectors.toList());
+        return ResponseEntity.ok(result);
+    }
+
     @GetMapping("/{id}")
     @Transactional(readOnly = true)
     public ResponseEntity<?> getUserProfile(@PathVariable Long id, Authentication authentication) {
@@ -90,6 +109,15 @@ public class UserController {
         result.put("isFollowing", isFollowing);
         result.put("favoriteMovieIds", targetUser.getFavoriteMovieIds() != null ? targetUser.getFavoriteMovieIds() : "");
         return ResponseEntity.ok(result);
+    }
+
+    @GetMapping("/{id}/following-ids")
+    @Transactional(readOnly = true)
+    public ResponseEntity<List<Long>> getFollowingIds(@PathVariable Long id) {
+        User user = userRepository.findById(id).orElse(null);
+        if (user == null) return ResponseEntity.notFound().build();
+        List<Long> ids = user.getFollowing().stream().map(User::getId).collect(Collectors.toList());
+        return ResponseEntity.ok(ids);
     }
 
     @GetMapping("/{id}/favorites")

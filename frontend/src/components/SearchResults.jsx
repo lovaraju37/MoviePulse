@@ -374,7 +374,7 @@ const SearchResults = () => {
                                         onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                                     >
                                         <img 
-                                            src={user.picture || "https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp&f=y"} 
+                                            src={user.picture || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name || 'User')}&background=2c3440&color=9ab&size=128`} 
                                             alt={user.name} 
                                             style={{ 
                                                 width: '36px', 
@@ -383,6 +383,7 @@ const SearchResults = () => {
                                                 objectFit: 'cover', 
                                                 marginRight: '12px' 
                                             }}
+                                            onError={e => { e.target.onerror = null; e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name || 'User')}&background=2c3440&color=9ab&size=128`; }}
                                         />
                                         <div style={{ display: 'flex', flexDirection: 'column' }}>
                                             <span style={{ 

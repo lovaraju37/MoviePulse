@@ -16,6 +16,8 @@ public interface ReviewRepository extends JpaRepository<Review, Long> {
 
     long countByUserId(Long userId);
 
+    long countByUserIdAndContentIsNotNull(Long userId);
+
     long countByUserIdAndCreatedAtAfter(Long userId, LocalDateTime date);
 
     List<Review> findByUserIdInOrderByCreatedAtDesc(List<Long> userIds);

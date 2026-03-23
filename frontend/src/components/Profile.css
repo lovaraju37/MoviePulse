@@ -211,6 +211,13 @@
   color: #fff;
   font-size: 1.25rem;
   line-height: 1;
+  text-decoration: none;
+  cursor: pointer;
+  transition: color 0.15s;
+}
+
+.profile-slim-username:hover {
+  color: #cbd5e1;
 }
 
 .profile-slim-bio {

@@ -3,6 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { useNavigate, useOutletContext } from 'react-router-dom';
 import ReviewCard from './ReviewCard';
 import MoviePoster from './MoviePoster';
+import ReviewModal from './ReviewModal';
 import { Heart, Clock, Star, Film, Grid, List as ListIcon, User, UserPlus, UserMinus, BarChart2 } from 'lucide-react';
 import './ProfileTabs.css';
 
@@ -13,18 +14,24 @@ const IMAGE_BASE_URL = 'https://image.tmdb.org/t/p/w500';
 // Supports: null = any, 'none' = no rating, [lo, hi] = range (0.5–5 half-star steps)
 const RatingDropdown = ({ value, onChange }) => {
   const [open, setOpen] = useState(false);
-  // hoverSlot: 0–9 (half-star slots), dragStartSlot for range
+  // hoverSlot: 0–9 (half-star slots). dragStartSlot set on mousedown for range drag.
   const [hoverSlot, setHoverSlot] = useState(null);
   const [dragStartSlot, setDragStartSlot] = useState(null);
   const ref = useRef(null);
 
   useEffect(() => {
     const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    // Cancel drag if mouse released outside stars
+    const upHandler = () => { if (dragStartSlot !== null) setDragStartSlot(null); };
     document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, []);
+    document.addEventListener('mouseup', upHandler);
+    return () => {
+      document.removeEventListener('mousedown', handler);
+      document.removeEventListener('mouseup', upHandler);
+    };
+  }, [dragStartSlot]);
 
-  // 10 half-star slots: slot 0 = 0.5★, slot 1 = 1★, ..., slot 9 = 5★
+  // slot 0 = 0.5★, slot 9 = 5★
   const slotToVal = (slot) => (slot + 1) * 0.5;
 
   const getLabel = () => {
@@ -38,27 +45,28 @@ const RatingDropdown = ({ value, onChange }) => {
     return 'RATING';
   };
 
-  // Determine which slots are highlighted (blue)
-  // During drag: from dragStartSlot to hoverSlot
-  // After selection: from value[0] slot to value[1] slot
+  // Which slots should be lit up?
+  // Priority: dragging > hovering (fills 0..hoverSlot) > saved value
   const getSlotHighlight = (slot) => {
-    let lo, hi;
     if (dragStartSlot !== null && hoverSlot !== null) {
-      lo = Math.min(dragStartSlot, hoverSlot);
-      hi = Math.max(dragStartSlot, hoverSlot);
-    } else if (Array.isArray(value)) {
-      lo = Math.round(value[0] / 0.5) - 1;
-      hi = Math.round(value[1] / 0.5) - 1;
-    } else {
-      return false;
+      // range drag: fill between dragStart and current hover
+      const lo = Math.min(dragStartSlot, hoverSlot);
+      const hi = Math.max(dragStartSlot, hoverSlot);
+      return slot >= lo && slot <= hi;
     }
-    return slot >= lo && slot <= hi;
+    if (hoverSlot !== null) {
+      // simple hover: fill from 0 up to hoverSlot
+      return slot <= hoverSlot;
+    }
+    if (Array.isArray(value)) {
+      const lo = Math.round(value[0] / 0.5) - 1;
+      const hi = Math.round(value[1] / 0.5) - 1;
+      return slot >= lo && slot <= hi;
+    }
+    return false;
   };
 
-  // Each star (0–4) has a left half (slot = star*2) and right half (slot = star*2+1)
-  const handleHalfEnter = (slot) => {
-    setHoverSlot(slot);
-  };
+  const handleHalfEnter = (slot) => setHoverSlot(slot);
 
   const handleHalfDown = (slot, e) => {
     e.preventDefault();
@@ -67,25 +75,28 @@ const RatingDropdown = ({ value, onChange }) => {
   };
 
   const handleHalfUp = (slot) => {
-    if (dragStartSlot === null) return;
-    const lo = Math.min(dragStartSlot, slot);
-    const hi = Math.max(dragStartSlot, slot);
-    onChange([slotToVal(lo), slotToVal(hi)]);
-    setDragStartSlot(null);
+    if (dragStartSlot !== null) {
+      // range drag completed
+      const lo = Math.min(dragStartSlot, slot);
+      const hi = Math.max(dragStartSlot, slot);
+      onChange([slotToVal(lo), slotToVal(hi)]);
+      setDragStartSlot(null);
+    } else {
+      // simple click — single value (lo = 0, hi = clicked slot)
+      onChange([0.5, slotToVal(slot)]);
+    }
     setOpen(false);
   };
 
   const handleMouseLeaveStars = () => {
     setHoverSlot(null);
-    if (dragStartSlot !== null) setDragStartSlot(null);
+    setDragStartSlot(null);
   };
 
   // For each star, compute fill: 'full', 'half', or 'empty'
   const getStarFill = (starIdx) => {
-    const leftSlot = starIdx * 2;
-    const rightSlot = starIdx * 2 + 1;
-    const leftOn = getSlotHighlight(leftSlot);
-    const rightOn = getSlotHighlight(rightSlot);
+    const leftOn = getSlotHighlight(starIdx * 2);
+    const rightOn = getSlotHighlight(starIdx * 2 + 1);
     if (leftOn && rightOn) return 'full';
     if (leftOn) return 'half';
     return 'empty';
@@ -218,6 +229,7 @@ export const ProfileOverview = () => {
       setRecentMovies(watchedData.slice(0, 5));
 
       setReviews(reviewsData
+        .filter(r => r.content && r.content.trim())
         .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
         .map(r => ({ ...r, isLiked: r.isReviewLiked || false, likesCount: r.likesCount || 0 }))
       );
@@ -468,10 +480,11 @@ export const ProfileActivity = () => {
       .then(data => {
         // Sort by created date desc
         const sorted = data
+            .filter(r => r.content && r.content.trim())
             .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
             .map(review => ({
                 ...review,
-                isLiked: review.isReviewLiked || false, // Map for ReviewCard
+                isLiked: review.isReviewLiked || false,
                 likesCount: review.likesCount || 0
             }));
         setReviews(sorted);
@@ -625,6 +638,7 @@ export const ProfileDiary = () => {
   const [entries, setEntries] = useState([]);
   const [loading, setLoading] = useState(true);
   const [ratingFilter, setRatingFilter] = useState(null);
+  const [reviewModal, setReviewModal] = useState(null); // { movie, initialData }
 
   useEffect(() => {
     if (!user) return;
@@ -653,8 +667,11 @@ export const ProfileDiary = () => {
           rating: rev?.rating || 0,
           isLiked: likeSet.has(String(w.movieId)),
           isRewatch: rev?.rewatch || false,
-          hasReview: !!rev,
+          hasReview: !!(rev?.content && rev.content.trim()),
           reviewId: rev?.id,
+          reviewContent: rev?.content || '',
+          containsSpoiler: rev?.containsSpoiler || false,
+          watchedDate: rev?.watchedDate || w.createdAt,
         };
       });
 
@@ -665,12 +682,46 @@ export const ProfileDiary = () => {
     }).catch(() => setLoading(false));
   }, [user, authUser, profileUser]);
 
+  // Sync like state when toggled from MoviePoster anywhere on the page
+  useEffect(() => {
+    const handler = (e) => {
+      const { movieId, isLiked } = e.detail;
+      setEntries(prev => prev.map(entry =>
+        String(entry.movieId) === String(movieId) ? { ...entry, isLiked } : entry
+      ));
+    };
+    window.addEventListener('movieLikeChanged', handler);
+    return () => window.removeEventListener('movieLikeChanged', handler);
+  }, []);
+
   if (loading) return <div className="tab-content">Loading diary...</div>;
   if (!entries.length) return (
     <div className="tab-content">
       <p style={{ color: '#64748b' }}>No diary entries yet.</p>
     </div>
   );
+
+  const handleLikeToggle = async (entry) => {
+    const headers = { 'Authorization': `Bearer ${localStorage.getItem('token')}`, 'Content-Type': 'application/json' };
+    const isLiked = entry.isLiked;
+    try {
+      if (isLiked) {
+        await fetch(`${API_BASE_URL}/api/likes/${entry.movieId}`, { method: 'DELETE', headers });
+      } else {
+        await fetch(`${API_BASE_URL}/api/likes`, { method: 'POST', headers, body: JSON.stringify({ movieId: entry.movieId, movieTitle: entry.movieTitle, posterPath: entry.posterPath }) });
+      }
+      setEntries(prev => prev.map(e => e.id === entry.id ? { ...e, isLiked: !isLiked } : e));
+    } catch (err) { console.error(err); }
+  };
+
+  const handleReviewSave = (savedReview) => {
+    setEntries(prev => prev.map(e =>
+      String(e.movieId) === String(savedReview.movieId)
+        ? { ...e, rating: savedReview.rating || e.rating, hasReview: true, reviewId: savedReview.id, isRewatch: savedReview.rewatch || e.isRewatch }
+        : e
+    ));
+    setReviewModal(null);
+  };
 
   // Apply rating filter
   const filteredEntries = entries.filter(e => {
@@ -705,6 +756,7 @@ export const ProfileDiary = () => {
   };
 
   return (
+    <>
     <div className="tab-content diary-tab">
       {/* Diary filter bar */}
       <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '12px' }}>
@@ -758,16 +810,46 @@ export const ProfileDiary = () => {
                 </div>
                 <div className="diary-col-rating">{renderStars(entry.rating)}</div>
                 <div className="diary-col-like">
-                  <Heart size={15} fill={entry.isLiked ? '#ff5c5c' : 'none'} color={entry.isLiked ? '#ff5c5c' : '#475569'} strokeWidth={1.5} />
+                  <Heart
+                    size={15}
+                    fill={entry.isLiked ? '#ff5c5c' : 'none'}
+                    color={entry.isLiked ? '#ff5c5c' : '#475569'}
+                    strokeWidth={1.5}
+                    style={{ cursor: 'pointer' }}
+                    onClick={() => handleLikeToggle(entry)}
+                  />
                 </div>
                 <div className="diary-col-rewatch">
                   {entry.isRewatch && <span className="diary-rewatch-dot" title="Rewatch">↺</span>}
                 </div>
                 <div className="diary-col-review">
-                  {entry.hasReview && <span className="diary-review-icon" title="Has review">≡</span>}
+                  {entry.hasReview && (
+                    <span
+                      className="diary-review-icon"
+                      title="View review"
+                      style={{ cursor: 'pointer' }}
+                      onClick={() => navigate(`/movie/${entry.movieId}/activity?userId=${user.id}&tab=REVIEWS`)}
+                    >≡</span>
+                  )}
                 </div>
                 <div className="diary-col-edit">
-                  <button className="diary-edit-btn" onClick={() => navigate(`/movie/${entry.movieId}`)} title="Edit">✎</button>
+                  <button
+                    className="diary-edit-btn"
+                    title="Write / edit review"
+                    onClick={() => setReviewModal({
+                      movie: { id: entry.movieId, title: entry.movieTitle, poster_path: entry.posterPath },
+                      initialData: {
+                        rating: entry.rating,
+                        isRewatch: entry.isRewatch,
+                        rewatch: entry.isRewatch,
+                        isWatched: true,
+                        isLiked: entry.isLiked,
+                        review: entry.reviewContent,
+                        containsSpoiler: entry.containsSpoiler,
+                        watchedDate: entry.watchedDate ? entry.watchedDate.substring(0, 10) : undefined,
+                      }
+                    })}
+                  >✎</button>
                 </div>
               </div>
             );
@@ -775,6 +857,15 @@ export const ProfileDiary = () => {
         </div>
       ))}
     </div>
+    {reviewModal && (
+      <ReviewModal
+        movie={reviewModal.movie}
+        onClose={() => setReviewModal(null)}
+        onSave={handleReviewSave}
+        initialData={reviewModal.initialData}
+      />
+    )}
+    </>
   );
 };
 
@@ -806,12 +897,12 @@ export const ProfileReviews = () => {
         
         // Sort reviews by date descending and add isLiked status
         const sortedReviews = reviewsData
+          .filter(r => r.content && r.content.trim())
           .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
           .map(review => ({
             ...review,
-            // Map backend 'isReviewLiked' to 'isLiked' for ReviewCard
             isLiked: review.isReviewLiked || false,
-            likesCount: review.likesCount || 0 // Use backend provided count
+            likesCount: review.likesCount || 0
           }));
           
         setReviews(sortedReviews);
@@ -940,12 +1031,222 @@ export const ProfileWatchlist = () => {
   );
 };
 
-export const ProfileLists = () => (
-  <div className="tab-content">
-    <div className="profile-content-title">You have created 0 lists</div>
-    <p>Custom lists you have created will appear here.</p>
-  </div>
-);
+export const ProfileLists = () => {
+  const { user: authUser, token } = useAuth();
+  const { user: profileUser } = useOutletContext() || {};
+  const user = profileUser || authUser;
+  const navigate = useNavigate();
+
+  const [lists, setLists] = useState([]);
+  const [showModal, setShowModal] = useState(false);
+  const [form, setForm] = useState({ name: '', description: '', tags: '', visibility: 'public', ranked: false });
+  const [tagInput, setTagInput] = useState('');
+  const [tagList, setTagList] = useState([]);
+  const [filmSearch, setFilmSearch] = useState('');
+  const [filmResults, setFilmResults] = useState([]);
+  const [selectedFilms, setSelectedFilms] = useState([]);
+  const [searchTimeout, setSearchTimeout] = useState(null);
+  const isOwn = !profileUser || (authUser && String(profileUser.id) === String(authUser.id));
+
+  useEffect(() => {
+    if (!user) return;
+    fetch(`${API_BASE_URL}/api/lists/user/${user.id}`, {
+      headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+    }).then(r => r.ok ? r.json() : []).then(setLists).catch(() => {});
+  }, [user, token]);
+
+  const openModal = () => {
+    if (!authUser) { navigate('/signin'); return; }
+    setForm({ name: '', description: '', tags: '', visibility: 'public', ranked: false });
+    setTagList([]); setTagInput(''); setSelectedFilms([]); setFilmSearch(''); setFilmResults([]);
+    setShowModal(true);
+  };
+
+  const handleTagKey = (e) => {
+    if ((e.key === 'Tab' || e.key === 'Enter') && tagInput.trim()) {
+      e.preventDefault();
+      if (!tagList.includes(tagInput.trim())) setTagList(prev => [...prev, tagInput.trim()]);
+      setTagInput('');
+    }
+  };
+
+  const handleFilmSearch = (val) => {
+    setFilmSearch(val);
+    clearTimeout(searchTimeout);
+    if (!val.trim()) { setFilmResults([]); return; }
+    setSearchTimeout(setTimeout(async () => {
+      try {
+        const r = await fetch(`${API_BASE_URL}/api/movies/search?query=${encodeURIComponent(val)}`);
+        const data = await r.json();
+        setFilmResults((data.results || data).slice(0, 6));
+      } catch {}
+    }, 350));
+  };
+
+  const addFilm = (film) => {
+    if (!selectedFilms.find(f => String(f.id) === String(film.id))) {
+      setSelectedFilms(prev => [...prev, film]);
+    }
+    setFilmSearch(''); setFilmResults([]);
+  };
+
+  const removeFilm = (id) => setSelectedFilms(prev => prev.filter(f => String(f.id) !== String(id)));
+
+  const handleSave = async () => {
+    if (!form.name.trim()) return;
+    const payload = {
+      name: form.name,
+      description: form.description,
+      tags: tagList.join(','),
+      visibility: form.visibility,
+      ranked: form.ranked,
+      movieIds: selectedFilms.map(f => String(f.id)),
+    };
+    try {
+      const r = await fetch(`${API_BASE_URL}/api/lists`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify(payload),
+      });
+      if (r.ok) {
+        const created = await r.json();
+        setLists(prev => [created, ...prev]);
+        setShowModal(false);
+      }
+    } catch {}
+  };
+
+  return (
+    <div className="tab-content">
+      {/* Hero banner */}
+      <div className="lists-hero">
+        <p className="lists-hero-text">Collect, curate, and share. Lists are the perfect way to group films.</p>
+        {isOwn && (
+          <button className="lists-start-btn" onClick={openModal}>Start your own list</button>
+        )}
+      </div>
+
+      {lists.length > 0 && (
+        <>
+          <div className="lists-section-label">
+            {isOwn ? 'YOUR LISTS' : 'LISTS'}
+          </div>
+          <div className="lists-grid">
+            {lists.map(list => (
+              <div key={list.id} className="list-card">
+                <div className="list-card-title">{list.name}</div>
+                <div className="list-card-meta">{list.filmCount} film{list.filmCount !== 1 ? 's' : ''}</div>
+                {list.description && <div className="list-card-desc">{list.description}</div>}
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+
+      {lists.length === 0 && !isOwn && (
+        <p className="lists-empty">No lists yet.</p>
+      )}
+
+      {/* New List Modal */}
+      {showModal && (
+        <div className="nl-overlay" onClick={() => setShowModal(false)}>
+          <div className="nl-modal" onClick={e => e.stopPropagation()}>
+            <h2 className="nl-title">New List</h2>
+            <div className="nl-body">
+              {/* Left column */}
+              <div className="nl-left">
+                <div className="nl-field">
+                  <label className="nl-label"><span className="nl-required">●</span> Name</label>
+                  <input className="nl-input" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} />
+                </div>
+                <div className="nl-field">
+                  <label className="nl-label">Tags <span className="nl-hint">Press Tab to complete, Enter to create</span></label>
+                  <div className="nl-tags-wrap">
+                    {tagList.map(t => (
+                      <span key={t} className="nl-tag">{t} <button onClick={() => setTagList(p => p.filter(x => x !== t))}>×</button></span>
+                    ))}
+                    <input
+                      className="nl-tag-input"
+                      placeholder="eg. top 10"
+                      value={tagInput}
+                      onChange={e => setTagInput(e.target.value)}
+                      onKeyDown={handleTagKey}
+                    />
+                  </div>
+                </div>
+                <div className="nl-field">
+                  <label className="nl-label">Who can view</label>
+                  <select className="nl-select" value={form.visibility} onChange={e => setForm(f => ({ ...f, visibility: e.target.value }))}>
+                    <option value="public">Anyone — Public list</option>
+                    <option value="private">Only me — Private list</option>
+                  </select>
+                </div>
+                <div className="nl-field nl-ranked-row">
+                  <input type="checkbox" id="nl-ranked" checked={form.ranked} onChange={e => setForm(f => ({ ...f, ranked: e.target.checked }))} />
+                  <label htmlFor="nl-ranked" className="nl-ranked-label">Ranked list</label>
+                  <span className="nl-hint">Show position for each film.</span>
+                </div>
+              </div>
+              {/* Right column */}
+              <div className="nl-right">
+                <div className="nl-field">
+                  <label className="nl-label">Description</label>
+                  <textarea className="nl-textarea" value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} />
+                </div>
+              </div>
+            </div>
+
+            {/* Film add bar */}
+            <div className="nl-film-bar">
+              <button className="nl-add-film-btn">ADD A FILM</button>
+              <div className="nl-film-search-wrap">
+                <input
+                  className="nl-film-input"
+                  placeholder="Enter name of film..."
+                  value={filmSearch}
+                  onChange={e => handleFilmSearch(e.target.value)}
+                />
+                {filmResults.length > 0 && (
+                  <div className="nl-film-dropdown">
+                    {filmResults.map(f => (
+                      <div key={f.id} className="nl-film-option" onClick={() => addFilm(f)}>
+                        {f.poster_path && <img src={`https://image.tmdb.org/t/p/w45${f.poster_path}`} alt="" />}
+                        <span>{f.title} {f.release_date ? `(${f.release_date.slice(0,4)})` : ''}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <div className="nl-actions">
+                <button className="nl-cancel-btn" onClick={() => setShowModal(false)}>CANCEL</button>
+                <button className="nl-save-btn" onClick={handleSave}>SAVE</button>
+              </div>
+            </div>
+
+            {/* Selected films */}
+            {selectedFilms.length === 0 ? (
+              <div className="nl-empty-films">
+                <p><strong>Your list is empty.</strong></p>
+                <p>Add films using the field above, or from the links on a film poster or page.</p>
+              </div>
+            ) : (
+              <div className="nl-selected-films">
+                {selectedFilms.map((f, i) => (
+                  <div key={f.id} className="nl-selected-film">
+                    {form.ranked && <span className="nl-rank">{i + 1}</span>}
+                    {f.poster_path && <img src={`https://image.tmdb.org/t/p/w45${f.poster_path}`} alt="" />}
+                    <span>{f.title}</span>
+                    <button className="nl-remove-film" onClick={() => removeFilm(f.id)}>×</button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
 
 export const ProfileLikes = () => {
   const { user: authUser } = useAuth();
@@ -967,8 +1268,20 @@ export const ProfileLikes = () => {
     Promise.all([
       fetch(endpoint, { headers }).then(r => r.ok ? r.json() : []),
       fetch(`${API_BASE_URL}/api/reviews/user/${user.id}`, { headers }).then(r => r.ok ? r.json() : []),
-    ]).then(([likesData, reviewsData]) => {
-      setLikes(likesData);
+    ]).then(async ([likesData, reviewsData]) => {
+      // Backfill missing titles from TMDB
+      const enriched = await Promise.all(likesData.map(async item => {
+        if (item.movieTitle) return item;
+        try {
+          const res = await fetch(`${API_BASE_URL}/api/movies/${item.movieId}`);
+          if (res.ok) {
+            const m = await res.json();
+            return { ...item, movieTitle: m.title, posterPath: item.posterPath || m.poster_path };
+          }
+        } catch (_) {}
+        return item;
+      }));
+      setLikes(enriched);
       setReviews(reviewsData);
       setLoading(false);
     }).catch(err => { setError(err.message); setLoading(false); });
@@ -1009,7 +1322,7 @@ export const ProfileLikes = () => {
         {filtered.map(item => (
           <div key={item.id} className="films-grid-item">
             <MoviePoster
-              movie={{ id: item.movieId, title: item.movieTitle, poster_path: item.posterPath, vote_average: item.voteAverage, release_date: item.releaseDate }}
+              movie={{ id: item.movieId, title: item.movieTitle || item.title, movieTitle: item.movieTitle || item.title, poster_path: item.posterPath, vote_average: item.voteAverage, release_date: item.releaseDate }}
               showTitleTooltip={true}
             />
             {ratingMap[String(item.movieId)] && (

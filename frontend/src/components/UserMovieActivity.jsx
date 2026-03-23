@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import Navbar from './Navbar';
 import RatingStars from './RatingStars';
+import ReviewModal from './ReviewModal';
 import { Star, Heart, Eye, Clock, Calendar, List, RefreshCw } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import MoviePoster from './MoviePoster';
@@ -24,6 +25,23 @@ const UserMovieActivity = () => {
   const [userReview, setUserReview] = useState(null);
   const [showSpoiler, setShowSpoiler] = useState(false);
   const [viewedUser, setViewedUser] = useState(null);
+  const [diaryEntries, setDiaryEntries] = useState([]);
+  const [reviewModal, setReviewModal] = useState(null);
+  const [friendActivity, setFriendActivity] = useState([]);
+  const [viewMode, setViewMode] = useState('yours'); // 'yours' | 'friends'
+  const [showViewDropdown, setShowViewDropdown] = useState(false);
+
+  // Sync like state when toggled from MoviePoster
+  useEffect(() => {
+    const handler = (e) => {
+      const { movieId, isLiked } = e.detail;
+      setDiaryEntries(prev => prev.map(entry =>
+        String(entry.movieId) === String(movieId) ? { ...entry, isLiked } : entry
+      ));
+    };
+    window.addEventListener('movieLikeChanged', handler);
+    return () => window.removeEventListener('movieLikeChanged', handler);
+  }, []);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -158,6 +176,63 @@ const UserMovieActivity = () => {
             newActivity.sort((a, b) => new Date(b.date) - new Date(a.date));
             
             setActivity(newActivity);
+
+            // Build diary entries for this movie
+            const headers = { 'Authorization': `Bearer ${localStorage.getItem('token')}` };
+            try {
+              const [watchedAll, reviewsAll, likesAll] = await Promise.all([
+                fetch(isOwnProfile ? `${API_BASE_URL}/api/watched` : `${API_BASE_URL}/api/watched/user/${targetUserId}`, { headers }).then(r => r.ok ? r.json() : []),
+                fetch(`${API_BASE_URL}/api/reviews/user/${targetUserId}`, { headers }).then(r => r.ok ? r.json() : []),
+                fetch(`${API_BASE_URL}/api/likes/user/${targetUserId}`, { headers }).then(r => r.ok ? r.json() : []),
+              ]);
+              const movieWatched = watchedAll.filter(w => String(w.movieId) === String(id));
+              const movieReview = reviewsAll.find(r => String(r.movieId) === String(id));
+              const movieLike = likesAll.find(l => String(l.movieId) === String(id));
+              const diary = movieWatched.map(w => ({
+                id: w.id,
+                movieId: w.movieId,
+                movieTitle: w.movieTitle,
+                posterPath: w.posterPath,
+                releaseDate: w.releaseDate,
+                watchedAt: w.createdAt,
+                rating: movieReview?.rating || 0,
+                isLiked: !!movieLike,
+                isRewatch: movieReview?.rewatch || false,
+                hasReview: !!(movieReview?.content && movieReview.content.trim()),
+                reviewId: movieReview?.id,
+                reviewContent: movieReview?.content || '',
+                containsSpoiler: movieReview?.containsSpoiler || false,
+                watchedDate: movieReview?.watchedDate || w.createdAt,
+              }));
+              diary.sort((a, b) => new Date(b.watchedAt) - new Date(a.watchedAt));
+              setDiaryEntries(diary);
+            } catch (e) { console.warn('Diary fetch failed', e); }
+
+            // Fetch friends' activity for this movie
+            if (isOwnProfile) {
+              try {
+                const friendRes = await fetch(`${API_BASE_URL}/api/movies/${id}/friend-activity`, {
+                  headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+                });
+                if (friendRes.ok) {
+                  const friendData = await friendRes.json();
+                  // Enrich with rating/review for each friend
+                  const enriched = await Promise.all(friendData.map(async f => {
+                    try {
+                      const rRes = await fetch(`${API_BASE_URL}/api/reviews/user/${f.userId}/movie/${id}`, {
+                        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+                      });
+                      if (rRes.ok) {
+                        const rData = await rRes.json();
+                        return { ...f, rating: rData.rating || 0, hasReview: !!(rData.content && rData.content.trim()) };
+                      }
+                    } catch (_) {}
+                    return { ...f, rating: 0, hasReview: false };
+                  }));
+                  setFriendActivity(enriched);
+                }
+              } catch (e) { console.warn('Friend activity fetch failed', e); }
+            }
         }
       } catch (err) {
         console.error(err);
@@ -176,7 +251,7 @@ const UserMovieActivity = () => {
   const isOwnProfile = !queryUserId || (authUser && String(authUser.id) === String(queryUserId));
   const displayName = isOwnProfile ? "You" : (viewedUser ? viewedUser.name : "User");
   const titleName = isOwnProfile ? "YOUR" : (viewedUser ? `${viewedUser.name.toUpperCase()}'S` : "USER'S");
-  const avatarUrl = viewedUser ? viewedUser.avatarUrl : (authUser ? authUser.avatarUrl : null);
+  const avatarUrl = viewedUser ? (viewedUser.avatarUrl || viewedUser.picture) : (authUser ? authUser.picture : null);
   const userNameForAvatar = viewedUser ? viewedUser.name : (authUser ? authUser.name : 'User');
 
   const formatDate = (dateString) => {
@@ -224,6 +299,39 @@ const UserMovieActivity = () => {
       }
   };
 
+  const handleDiaryLikeToggle = async (entry) => {
+    const headers = { 'Authorization': `Bearer ${localStorage.getItem('token')}`, 'Content-Type': 'application/json' };
+    try {
+      if (entry.isLiked) {
+        await fetch(`${API_BASE_URL}/api/likes/${entry.movieId}`, { method: 'DELETE', headers });
+      } else {
+        await fetch(`${API_BASE_URL}/api/likes`, { method: 'POST', headers, body: JSON.stringify({ movieId: entry.movieId, movieTitle: entry.movieTitle, posterPath: entry.posterPath }) });
+      }
+      setDiaryEntries(prev => prev.map(e => e.id === entry.id ? { ...e, isLiked: !entry.isLiked } : e));
+    } catch (err) { console.error(err); }
+  };
+
+  const handleDiaryReviewSave = (saved) => {
+    setDiaryEntries(prev => prev.map(e =>
+      String(e.movieId) === String(saved.movieId)
+        ? { ...e, rating: saved.rating || e.rating, hasReview: !!(saved.content && saved.content.trim()), reviewId: saved.id, isRewatch: saved.rewatch || e.isRewatch }
+        : e
+    ));
+    setReviewModal(null);
+  };
+
+  const renderDiaryStars = (rating) => {
+    if (!rating) return null;
+    const full = Math.floor(rating);
+    const half = rating % 1 !== 0;
+    return (
+      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '1px' }}>
+        {[...Array(full)].map((_, i) => <Star key={i} size={13} fill="#00e054" color="#00e054" strokeWidth={0} />)}
+        {half && <span style={{ color: '#00e054', fontSize: '12px', lineHeight: 1 }}>½</span>}
+      </span>
+    );
+  };
+
   return (
     <div className="activity-page-container">
       <Navbar />
@@ -265,12 +373,72 @@ const UserMovieActivity = () => {
                     LISTS
                 </div>
                 <div className="activity-tab-spacer"></div>
-                <div className="activity-tab-filter">
-                    {isOwnProfile ? "YOU" : (viewedUser ? viewedUser.name.toUpperCase() : "USER")} ⌄
+                <div className="activity-tab-filter" style={{ position: 'relative' }}>
+                  <button
+                    className="activity-view-btn"
+                    onClick={() => setShowViewDropdown(v => !v)}
+                  >
+                    {viewMode === 'yours' ? (isOwnProfile ? 'YOU' : (viewedUser?.name?.toUpperCase() || 'USER')) : "FRIENDS"} ▾
+                  </button>
+                  {showViewDropdown && (
+                    <div className="activity-view-dropdown">
+                      <div
+                        className={`activity-view-option ${viewMode === 'yours' ? 'active' : ''}`}
+                        onClick={() => { setViewMode('yours'); setShowViewDropdown(false); }}
+                      >Your activity</div>
+                      {isOwnProfile && (
+                        <div
+                          className={`activity-view-option ${viewMode === 'friends' ? 'active' : ''}`}
+                          onClick={() => { setViewMode('friends'); setShowViewDropdown(false); }}
+                        >Your friends' activity</div>
+                      )}
+                    </div>
+                  )}
                 </div>
             </div>
 
-            {activeTab === 'ACTIVITY' && (
+            {activeTab === 'ACTIVITY' && viewMode === 'friends' && (
+              <div className="friends-activity-section">
+                <div className="friends-activity-header">
+                  <span className="friends-activity-title">YOUR FRIENDS WHO HAVE WATCHED</span>
+                </div>
+                {/* Column headers */}
+                <div className="friends-activity-cols">
+                  <span className="fac-name">NAME</span>
+                  <span className="fac-rating">RATING</span>
+                  <span className="fac-like">LIKE</span>
+                  <span className="fac-review">REVIEW</span>
+                </div>
+                {friendActivity.length === 0 ? (
+                  <div className="no-activity">None of your friends have watched this yet.</div>
+                ) : friendActivity.map(f => (
+                  <div key={f.userId} className="friends-activity-row" onClick={() => navigate(`/movie/${id}/activity?userId=${f.userId}`)}>
+                    <div className="fac-name">
+                      <img
+                        src={f.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(f.name)}&background=random`}
+                        alt={f.name}
+                        className="fac-avatar"
+                      />
+                      <div>
+                        <div className="fac-username">{f.name}</div>
+                        <div className="fac-sub">Activity for film</div>
+                      </div>
+                    </div>
+                    <div className="fac-rating">
+                      {f.rating > 0 && <RatingStars rating={f.rating} size={13} color="#00e054" />}
+                    </div>
+                    <div className="fac-like">
+                      {f.status === 'LIKED' && <Heart size={14} fill="#ff8000" color="#ff8000" strokeWidth={0} />}
+                    </div>
+                    <div className="fac-review">
+                      {f.hasReview && <span style={{ color: '#94a3b8', fontSize: '1rem' }}>≡</span>}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {activeTab === 'ACTIVITY' && viewMode === 'yours' && (
                 <div className="activity-list">
                     {activity.length > 0 ? (
                         activity.map((item, index) => (
@@ -320,14 +488,163 @@ const UserMovieActivity = () => {
                 </div>
             )}
 
-            {activeTab === 'REVIEWS' && (
+            {activeTab === 'DIARY' && viewMode === 'friends' && (
+              <div className="friends-activity-section">
+                <div className="friends-activity-header">
+                  <span className="friends-activity-title">YOUR FRIENDS WHO HAVE WATCHED</span>
+                </div>
+                <div className="friends-activity-cols">
+                  <span className="fac-name">NAME</span>
+                  <span className="fac-rating">RATING</span>
+                  <span className="fac-like">LIKE</span>
+                  <span className="fac-review">REVIEW</span>
+                </div>
+                {friendActivity.length === 0 ? (
+                  <div className="no-activity">None of your friends have watched this yet.</div>
+                ) : friendActivity.map(f => (
+                  <div key={f.userId} className="friends-activity-row" onClick={() => navigate(`/movie/${id}/activity?userId=${f.userId}`)}>
+                    <div className="fac-name">
+                      <img src={f.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(f.name)}&background=random`} alt={f.name} className="fac-avatar" />
+                      <div>
+                        <div className="fac-username">{f.name}</div>
+                        <div className="fac-sub">Diary for film</div>
+                      </div>
+                    </div>
+                    <div className="fac-rating">{f.rating > 0 && <RatingStars rating={f.rating} size={13} color="#00e054" />}</div>
+                    <div className="fac-like">{f.status === 'LIKED' && <Heart size={14} fill="#ff8000" color="#ff8000" strokeWidth={0} />}</div>
+                    <div className="fac-review">{f.hasReview && <span style={{ color: '#94a3b8', fontSize: '1rem' }}>≡</span>}</div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {activeTab === 'DIARY' && viewMode === 'yours' && (
+              <div className="diary-tab">
+                <div className="diary-header-row" style={{ gridTemplateColumns: '80px 50px 80px 120px 50px 60px 60px 50px' }}>
+                  <span className="diary-col-month">Month</span>
+                  <span className="diary-col-day">Day</span>
+                  <span className="diary-col-released">Released</span>
+                  <span className="diary-col-rating">Rating</span>
+                  <span className="diary-col-like">Like</span>
+                  <span className="diary-col-rewatch">Rewatch</span>
+                  <span className="diary-col-review">Review</span>
+                  <span className="diary-col-edit">Edit</span>
+                </div>
+                {diaryEntries.length === 0 ? (
+                  <div className="no-activity">No diary entries for this movie yet.</div>
+                ) : diaryEntries.map(entry => {
+                  const d = new Date(entry.watchedAt);
+                  return (
+                    <div key={entry.id} className="diary-row" style={{ gridTemplateColumns: '80px 50px 80px 120px 50px 60px 60px 50px' }}>
+                      <div className="diary-col-month">
+                        <div className="diary-month-badge">
+                          <span className="diary-month-name">{d.toLocaleString('en-US', { month: 'short' }).toUpperCase()}</span>
+                          <span className="diary-month-year">{d.getFullYear()}</span>
+                        </div>
+                      </div>
+                      <div className="diary-col-day"><span className="diary-day-num">{d.getDate()}</span></div>
+                      <div className="diary-col-released"><span className="diary-year">{entry.releaseDate?.substring(0, 4)}</span></div>
+                      <div className="diary-col-rating">{renderDiaryStars(entry.rating)}</div>
+                      <div className="diary-col-like">
+                        <Heart
+                          size={15}
+                          fill={entry.isLiked ? '#ff5c5c' : 'none'}
+                          color={entry.isLiked ? '#ff5c5c' : '#475569'}
+                          strokeWidth={1.5}
+                          style={{ cursor: isOwnProfile ? 'pointer' : 'default' }}
+                          onClick={() => isOwnProfile && handleDiaryLikeToggle(entry)}
+                        />
+                      </div>
+                      <div className="diary-col-rewatch">
+                        {entry.isRewatch && <span className="diary-rewatch-dot" title="Rewatch">↺</span>}
+                      </div>
+                      <div className="diary-col-review">
+                        {entry.hasReview && (
+                          <span
+                            className="diary-review-icon"
+                            title="View review"
+                            style={{ cursor: 'pointer' }}
+                            onClick={() => setActiveTab('REVIEWS')}
+                          >≡</span>
+                        )}
+                      </div>
+                      <div className="diary-col-edit">
+                        {isOwnProfile && (
+                          <button
+                            className="diary-edit-btn"
+                            title="Write / edit review"
+                            onClick={() => setReviewModal({
+                              movie: { id: entry.movieId, title: entry.movieTitle, poster_path: entry.posterPath },
+                              initialData: {
+                                rating: entry.rating,
+                                isRewatch: entry.isRewatch,
+                                rewatch: entry.isRewatch,
+                                isWatched: true,
+                                isLiked: entry.isLiked,
+                                review: entry.reviewContent,
+                                containsSpoiler: entry.containsSpoiler,
+                                watchedDate: entry.watchedDate ? entry.watchedDate.substring(0, 10) : undefined,
+                              }
+                            })}
+                          >✎</button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {reviewModal && (
+              <ReviewModal
+                movie={reviewModal.movie}
+                onClose={() => setReviewModal(null)}
+                onSave={handleDiaryReviewSave}
+                initialData={reviewModal.initialData}
+              />
+            )}
+
+            {activeTab === 'REVIEWS' && viewMode === 'friends' && (
+              <div className="friends-activity-section">
+                <div className="friends-activity-header">
+                  <span className="friends-activity-title">YOUR FRIENDS WHO HAVE WATCHED</span>
+                </div>
+                <div className="friends-activity-cols">
+                  <span className="fac-name">NAME</span>
+                  <span className="fac-rating">RATING</span>
+                  <span className="fac-like">LIKE</span>
+                  <span className="fac-review">REVIEW</span>
+                </div>
+                {friendActivity.length === 0 ? (
+                  <div className="no-activity">None of your friends have watched this yet.</div>
+                ) : friendActivity.map(f => (
+                  <div key={f.userId} className="friends-activity-row" onClick={() => navigate(`/movie/${id}/activity?userId=${f.userId}`)}>
+                    <div className="fac-name">
+                      <img src={f.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(f.name)}&background=random`} alt={f.name} className="fac-avatar" />
+                      <div>
+                        <div className="fac-username">{f.name}</div>
+                        <div className="fac-sub">Review for film</div>
+                      </div>
+                    </div>
+                    <div className="fac-rating">{f.rating > 0 && <RatingStars rating={f.rating} size={13} color="#00e054" />}</div>
+                    <div className="fac-like">{f.status === 'LIKED' && <Heart size={14} fill="#ff8000" color="#ff8000" strokeWidth={0} />}</div>
+                    <div className="fac-review">{f.hasReview && <span style={{ color: '#94a3b8', fontSize: '1rem' }}>≡</span>}</div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {activeTab === 'REVIEWS' && viewMode === 'yours' && (
                 <div className="reviews-tab-content">
                     {userReview ? (
                         <div className="full-review-card">
                             <div className="review-header">
-                                <div className="user-avatar-medium" style={{
-                                    backgroundImage: `url(${avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(userNameForAvatar)}&background=random`})`
-                                }}></div>
+                                <img
+                                    src={avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(userNameForAvatar)}&background=random`}
+                                    alt={userNameForAvatar}
+                                    className="user-avatar-medium"
+                                    style={{ borderRadius: '50%', objectFit: 'cover', width: '36px', height: '36px', flexShrink: 0 }}
+                                />
                                 <div className="review-meta">
                                     <div className="review-author">Review by <span className="author-name">{displayName}</span></div>
                                     <div className="review-rating">
